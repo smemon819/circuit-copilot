@@ -1683,6 +1683,51 @@
       background: rgba(0, 240, 144, .05);
     }
 
+    /* ── CALCULATOR WIDGET ───────────────────────────────────────────── */
+    .calc-tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+
+    .calc-tab {
+      padding: 4px 10px;
+      font-size: .64rem;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: var(--bg3);
+      color: var(--text-dim);
+      cursor: pointer;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .calc-tab.active {
+      background: var(--accent);
+      color: #000;
+      border-color: var(--accent);
+      font-weight: 700;
+    }
+
+    .calc-group {
+      display: none;
+    }
+
+    .calc-group.active {
+      display: block;
+    }
+
+    .calc-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .calc-row .ohm-field {
+      flex: 1;
+    }
+
     .ohm-result {
       grid-column: 1/-1;
       padding: 8px;
@@ -1776,6 +1821,135 @@
       pointer-events: none;
       z-index: 400;
     }
+
+    /* ── TAB BADGES ───────────────────────────────────────────────────────── */
+    .tab {
+      position: relative;
+    }
+
+    .tab-badge {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      width: 7px;
+      height: 7px;
+      background: var(--accent2);
+      border-radius: 50%;
+      box-shadow: 0 0 6px var(--accent2);
+      display: none;
+      animation: badge-pulse 2s infinite;
+    }
+
+    @keyframes badge-pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+
+      50% {
+        opacity: .5;
+        transform: scale(1.2);
+      }
+    }
+
+    /* ── MOBILE RESPONSIVE ────────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .app {
+        padding: 0 10px 20px;
+      }
+
+      header {
+        padding: 10px 0;
+      }
+
+      .logo-info h1 {
+        font-size: .95rem;
+      }
+
+      .logo-badge {
+        width: 34px;
+        height: 34px;
+        font-size: 16px;
+      }
+
+      .hdr-right {
+        gap: 5px;
+      }
+
+      .status-txt {
+        display: none;
+      }
+
+      /* Hide on very small for space */
+
+      .tabs {
+        display: flex;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        gap: 8px;
+        padding-bottom: 8px;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .tab {
+        flex: 0 0 auto;
+        padding: 6px 12px;
+        font-size: .7rem;
+      }
+
+      .workspace {
+        flex-direction: column;
+        gap: 15px;
+      }
+
+      .panel {
+        width: 100%;
+      }
+
+      .chat-input-row {
+        gap: 5px;
+      }
+
+      .btn {
+        padding: 6px 12px;
+        font-size: .72rem;
+      }
+
+      .project-bar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+      }
+
+      .project-name {
+        width: 100%;
+        font-size: .8rem;
+      }
+
+      .modal {
+        width: 95%;
+        padding: 15px;
+      }
+
+      .tour-tooltip {
+        max-width: 280px;
+        left: 10px !important;
+        right: 10px !important;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .logo-info p {
+        display: none;
+      }
+
+      .hdr-right {
+        justify-content: flex-end;
+        width: 100%;
+      }
+    }
   </style>
 </head>
 
@@ -1812,17 +1986,24 @@
 
     <!-- TABS -->
     <div class="tabs">
-      <button class="tab active" onclick="switchTab('schematic',this)"><span>🔌</span>Schematic</button>
-      <button class="tab" onclick="switchTab('simulate',this)"><span>📊</span>Simulate</button>
-      <button class="tab" onclick="switchTab('waveform',this)"><span>〰️</span>Waveform</button>
-      <button class="tab" onclick="switchTab('bom',this)"><span>🧾</span>BOM</button>
-      <button class="tab" onclick="switchTab('components',this)"><span>🧩</span>Parts</button>
-      <button class="tab" onclick="switchTab('debug',this)"><span>🔍</span>Debug</button>
-      <button class="tab" onclick="switchTab('arduino',this)"><span>💻</span>Arduino</button>
-      <button class="tab" onclick="switchTab('learn',this)"><span>📚</span>Learn</button>
-      <button class="tab" onclick="switchTab('quiz',this)"><span>🎯</span>Quiz</button>
-      <button class="tab" onclick="switchTab('templates',this)"><span>📋</span>Templates</button>
-      <button class="tab" onclick="switchTab('saved',this)"><span>🗂️</span>Saved</button>
+      <button class="tab active" onclick="switchTab('schematic',this)"><span>🔌</span>Schematic<span
+          class="tab-badge"></span></button>
+      <button class="tab" onclick="switchTab('simulate',this)"><span>📊</span>Simulate<span
+          class="tab-badge"></span></button>
+      <button class="tab" onclick="switchTab('waveform',this)"><span>〰️</span>Waveform<span
+          class="tab-badge"></span></button>
+      <button class="tab" onclick="switchTab('bom',this)"><span>🧾</span>BOM<span class="tab-badge"></span></button>
+      <button class="tab" onclick="switchTab('components',this)"><span>🧩</span>Parts<span
+          class="tab-badge"></span></button>
+      <button class="tab" onclick="switchTab('debug',this)"><span>🔍</span>Debug<span class="tab-badge"></span></button>
+      <button class="tab" onclick="switchTab('arduino',this)"><span>💻</span>Arduino<span
+          class="tab-badge"></span></button>
+      <button class="tab" onclick="switchTab('learn',this)"><span>📚</span>Learn<span class="tab-badge"></span></button>
+      <button class="tab" onclick="switchTab('quiz',this)"><span>🎯</span>Quiz<span class="tab-badge"></span></button>
+      <button class="tab" onclick="switchTab('templates',this)"><span>📋</span>Templates<span
+          class="tab-badge"></span></button>
+      <button class="tab" onclick="switchTab('saved',this)"><span>🗂️</span>Saved<span
+          class="tab-badge"></span></button>
     </div>
 
     <!-- ═══ SCHEMATIC ═══════════════════════════════════════════════════════ -->
@@ -2238,25 +2419,52 @@
             </div>
             <div id="learn-out" class="learn-output" style="display:none"></div>
             <div class="ohm-calc">
-              <h4>⚡ Ohm's Law Calculator</h4>
-              <div class="ohm-grid">
-                <div class="ohm-field">
-                  <label>Voltage (V)</label>
-                  <input type="number" id="ohm-v" placeholder="—" step="any" oninput="calcOhm()">
+              <div class="calc-tabs">
+                <div class="calc-tab active" onclick="switchCalc('ohm',this)">OHM'S LAW</div>
+                <div class="calc-tab" onclick="switchCalc('led',this)">LED RESISTOR</div>
+                <div class="calc-tab" onclick="switchCalc('555',this)">555 TIMER</div>
+              </div>
+
+              <!-- OHM'S LAW -->
+              <div id="calc-ohm" class="calc-group active">
+                <div class="ohm-grid">
+                  <div class="ohm-field"><label>Voltage (V)</label><input type="number" id="ohm-v" placeholder="—"
+                      oninput="calcOhm()"></div>
+                  <div class="ohm-field"><label>Current (A)</label><input type="number" id="ohm-i" placeholder="—"
+                      oninput="calcOhm()"></div>
+                  <div class="ohm-field"><label>Resistance (Ω)</label><input type="number" id="ohm-r" placeholder="—"
+                      oninput="calcOhm()"></div>
+                  <div class="ohm-field"><label>Power (W)</label><input type="number" id="ohm-p" placeholder="—"
+                      readonly></div>
                 </div>
-                <div class="ohm-field">
-                  <label>Current (A)</label>
-                  <input type="number" id="ohm-i" placeholder="—" step="any" oninput="calcOhm()">
+                <div class="ohm-result" id="ohm-result">Enter any 2 values</div>
+              </div>
+
+              <!-- LED RESISTOR -->
+              <div id="calc-led" class="calc-group">
+                <div class="ohm-grid">
+                  <div class="ohm-field"><label>Supply (V)</label><input type="number" id="led-vs" value="5"
+                      oninput="calcLED()"></div>
+                  <div class="ohm-field"><label>LED Vf (V)</label><input type="number" id="led-vf" value="2"
+                      oninput="calcLED()"></div>
+                  <div class="ohm-field"><label>LED If (mA)</label><input type="number" id="led-if" value="20"
+                      oninput="calcLED()"></div>
+                  <div class="ohm-field"><label>Resistor (Ω)</label><input type="number" id="led-r" readonly></div>
                 </div>
-                <div class="ohm-field">
-                  <label>Resistance (Ω)</label>
-                  <input type="number" id="ohm-r" placeholder="—" step="any" oninput="calcOhm()">
+                <div class="ohm-result" id="led-result">Use 150Ω resistor</div>
+              </div>
+
+              <!-- 555 TIMER -->
+              <div id="calc-555" class="calc-group">
+                <div class="ohm-grid">
+                  <div class="ohm-field"><label>R1 (Ω)</label><input type="number" id="555-r1" value="1000"
+                      oninput="calc555()"></div>
+                  <div class="ohm-field"><label>R2 (Ω)</label><input type="number" id="555-r2" value="10000"
+                      oninput="calc555()"></div>
+                  <div class="ohm-field"><label>Cap (µF)</label><input type="number" id="555-c" value="10"
+                      oninput="calc555()"></div>
                 </div>
-                <div class="ohm-field">
-                  <label>Power (W)</label>
-                  <input type="number" id="ohm-p" placeholder="—" step="any" readonly>
-                </div>
-                <div class="ohm-result" id="ohm-result">Enter any 2 values to calculate</div>
+                <div class="ohm-result" id="555-result">F: 6.8 Hz · Duty: 52%</div>
               </div>
             </div>
           </div>
@@ -2440,9 +2648,36 @@
       document.querySelectorAll('.tab').forEach(e => e.classList.remove('active'));
       document.getElementById('tab-' + name).classList.add('active');
       btn.classList.add('active');
+      // Hide badge when visiting tab
+      updateTabBadge(name, false);
       if (name === 'saved') loadSavedList();
       if (name === 'waveform') { setTimeout(() => { drawWave(); }, 100); }
     }
+
+    // ── TAB BADGES ─────────────────────────────────────────────────────────────
+    function updateTabBadge(name, on) {
+      const tab = document.querySelector(`.tab[onclick*="'${name}'"]`);
+      if (!tab) return;
+      const badge = tab.querySelector('.tab-badge');
+      if (badge) badge.style.display = on ? 'block' : 'none';
+    }
+
+    // ── AUTO-SAVE DRAFTS ───────────────────────────────────────────────────────
+    function initAutoSave() {
+      const ids = ['sch-input', 'sim-input', 'bom-input', 'comp-input', 'debug-input', 'ard-input', 'learn-input'];
+      ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('input', () => localStorage.setItem('cc_draft_' + id, el.value));
+        const s = localStorage.getItem('cc_draft_' + id);
+        if (s) el.value = s;
+      });
+      const p = document.getElementById('project-name');
+      p.addEventListener('input', () => localStorage.setItem('cc_draft_pname', p.value));
+      const sp = localStorage.getItem('cc_draft_pname');
+      if (sp) p.value = sp;
+    }
+    setTimeout(initAutoSave, 500);
 
     // ── HELPERS ────────────────────────────────────────────────────────────────
     const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -3452,13 +3687,65 @@
       renderCircuitHistory();
       showToast('🗑 History cleared');
     }
-    // Auto-add to history after schematic generation (patch runSchematic)
-    const _origRunSchematic = runSchematic;
+    // ── CALCULATORS ──────────────────────────────────────────────────────────
+    function switchCalc(type, btn) {
+      document.querySelectorAll('.calc-tab').forEach(e => e.classList.remove('active'));
+      document.querySelectorAll('.calc-group').forEach(e => e.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('calc-' + type).classList.add('active');
+    }
+    function calcLED() {
+      const vs = +document.getElementById('led-vs').value;
+      const vf = +document.getElementById('led-vf').value;
+      const im = +document.getElementById('led-if').value;
+      const res = (vs - vf) / (im / 1000);
+      document.getElementById('led-r').value = res > 0 ? Math.ceil(res) : 0;
+      document.getElementById('led-result').textContent = res > 0 ? `Use ${Math.ceil(res)}Ω resistor (Nearest standard: ${getStandardRes(res)}Ω)` : 'Invalid values';
+    }
+    function getStandardRes(r) {
+      const e24 = [1.0, 1.1, 1.2, 1.3, 1.5, 1.6, 1.8, 2.0, 2.2, 2.4, 2.7, 3.0, 3.3, 3.6, 3.9, 4.3, 4.7, 5.1, 5.6, 6.2, 6.8, 7.5, 8.2, 9.1];
+      const mag = Math.pow(10, Math.floor(Math.log10(r)));
+      const val = r / mag;
+      let closest = e24[0];
+      let diff = Math.abs(val - closest);
+      for (let v of e24) {
+        if (Math.abs(val - v) < diff) { diff = Math.abs(val - v); closest = v; }
+      }
+      return Math.round(closest * mag);
+    }
+    function calc555() {
+      const r1 = +document.getElementById('555-r1').value;
+      const r2 = +document.getElementById('555-r2').value;
+      const c = +document.getElementById('555-c').value * 1e-6;
+      if (!r1 || !r2 || !c) return;
+      const freq = 1.44 / ((r1 + 2 * r2) * c);
+      const duty = ((r1 + r2) / (r1 + 2 * r2)) * 100;
+      document.getElementById('555-result').textContent = `Freq: ${freq < 1000 ? freq.toFixed(1) + ' Hz' : (freq / 1000).toFixed(2) + ' kHz'} · Duty: ${duty.toFixed(1)}%`;
+    }
+
+    // ── FUNCTION PATCHING (Badges & History) ─────────────────────────────────
+    const _origRunSchematic = window.runSchematic;
     window.runSchematic = async function () {
       await _origRunSchematic();
       if (S.sch.lastSchema) {
         addToCircuitHistory(S.sch.lastSchema.title || document.getElementById('sch-input').value, S.sch.lastSchema);
       }
+      updateTabBadge('schematic', true);
+    };
+    const _oldRunSimulate = window.runSimulate;
+    window.runSimulate = async function () {
+      await _oldRunSimulate();
+      updateTabBadge('simulate', true);
+    };
+    const _oldRunBOM = window.runBOM;
+    window.runBOM = async function () {
+      await _oldRunBOM();
+      updateTabBadge('bom', true);
+    };
+    const _oldRunChat = window.runChat;
+    window.runChat = async function (ep, p, outId, phId) {
+      await _oldRunChat(ep, p, outId, phId);
+      updateTabBadge(p, true);
     };
     // Render on load
     setTimeout(renderCircuitHistory, 150);
