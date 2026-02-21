@@ -1,4 +1,4 @@
-import os, io, json, base64, re, datetime
+import os, io, json, base64, re, datetime, sqlite3
 import schemdraw
 import schemdraw.elements as elm
 import matplotlib
@@ -20,8 +20,21 @@ app = FastAPI(title="Circuit Design Copilot v3")
 client = Groq(api_key=os.environ.get("GROQ_API_KEY", ""))
 GROQ_MODEL = "llama-3.3-70b-versatile"
 
-# In-memory circuit save slots (resets on restart — fine for hackathon)
-saved_circuits: dict = {}
+# SQLite Database Setup
+DB_PATH = "circuits.db"
+
+def init_db():
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS circuits (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                saved_at TEXT NOT NULL,
+                data TEXT NOT NULL,
+                is_public INTEGER DEFAULT 0
+            )
+        """)
+init_db()
 
 # ── System Prompts ─────────────────────────────────────────────────────────────
 
@@ -467,36 +480,78 @@ async def learn(request: Request):
 @app.post("/api/save-circuit")
 async def save_circuit(request: Request):
     body = await request.json()
-    name = body.get("name","Untitled Circuit").strip()
-    if not name: name = "Untitled Circuit"
-    slot = {
-        "name": name,
-        "saved_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+    name = body.get("name", "Untitled Circuit").strip() or "Untitled Circuit"
+    is_public = 1 if body.get("is_public") else 0
+    
+    tech_data = {
         "schematic_image": body.get("schematic_image"),
-        "schematic_description": body.get("schematic_description",""),
-        "components": body.get("components",[]),
+        "schematic_description": body.get("schematic_description", ""),
+        "components": body.get("components", []),
         "simulation": body.get("simulation"),
-        "arduino_code": body.get("arduino_code",""),
+        "arduino_code": body.get("arduino_code", ""),
         "bom": body.get("bom"),
     }
-    cid = str(len(saved_circuits) + 1)
-    saved_circuits[cid] = slot
-    return JSONResponse({"id": cid, "name": name})
+    
+    saved_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO circuits (name, saved_at, data, is_public) VALUES (?, ?, ?, ?)",
+            (name, saved_at, json.dumps(tech_data), is_public)
+        )
+        cid = cursor.lastrowid
+        
+    return JSONResponse({"id": str(cid), "name": name})
 
 
 @app.get("/api/list-circuits")
 async def list_circuits():
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, name, saved_at FROM circuits ORDER BY id DESC LIMIT 50")
+        rows = cursor.fetchall()
+        
     return JSONResponse({"circuits": [
-        {"id": k, "name": v["name"], "saved_at": v["saved_at"]}
-        for k,v in saved_circuits.items()
+        {"id": str(row[0]), "name": row[1], "saved_at": row[2]}
+        for row in rows
     ]})
 
 
 @app.get("/api/load-circuit/{cid}")
 async def load_circuit(cid: str):
-    if cid not in saved_circuits:
-        return JSONResponse({"error":"Not found"}, status_code=404)
-    return JSONResponse(saved_circuits[cid])
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT name, saved_at, data FROM circuits WHERE id = ?", (cid,))
+        row = cursor.fetchone()
+        
+    if not row:
+        return JSONResponse({"error": "Not found"}, status_code=404)
+        
+    data = json.loads(row[2])
+    data["name"] = row[0]
+    data["saved_at"] = row[1]
+    return JSONResponse(data)
+
+
+@app.get("/api/gallery")
+async def get_gallery():
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, name, saved_at, data FROM circuits WHERE is_public = 1 ORDER BY id DESC LIMIT 20")
+        rows = cursor.fetchall()
+        
+    gallery = []
+    for row in rows:
+        tech = json.loads(row[3])
+        gallery.append({
+            "id": str(row[0]),
+            "name": row[1],
+            "saved_at": row[2],
+            "image": tech.get("schematic_image"),
+            "description": tech.get("schematic_description")
+        })
+    return JSONResponse({"gallery": gallery})
 
 
 @app.post("/api/export-pdf")

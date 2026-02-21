@@ -2374,6 +2374,96 @@
       }
     }
 
+    /* ── LAB MODE ────────────────────────────────────────────────────────── */
+    body.lab-mode {
+      background: #000;
+      color: #fff;
+      font-size: 1.2rem;
+    }
+
+    body.lab-mode .panel {
+      background: #111;
+      border: 2px solid #555;
+    }
+
+    body.lab-mode h1,
+    body.lab-mode h2,
+    body.lab-mode h3,
+    body.lab-mode h4,
+    body.lab-mode h5 {
+      color: var(--accent2);
+      font-size: 1.4rem;
+    }
+
+    body.lab-mode .tab,
+    body.lab-mode .btn,
+    body.lab-mode .guide-num {
+      transform: scale(1.1);
+      font-weight: 800;
+    }
+
+    body.lab-mode .workspace {
+      gap: 30px;
+    }
+
+    body.lab-mode .guide-txt {
+      font-size: 1.1rem;
+      line-height: 1.6;
+    }
+
+    body.lab-mode .meta-tag {
+      font-size: .9rem !important;
+      padding: 4px 10px;
+    }
+
+    /* ── GALLERY ─────────────────────────────────────────────────────────── */
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 20px;
+      padding: 10px 0;
+    }
+
+    .gallery-card {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: transform .2s, border-color .2s;
+    }
+
+    .gallery-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--accent);
+    }
+
+    .gallery-img {
+      width: 100%;
+      height: 160px;
+      object-fit: cover;
+      background: #000;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .gallery-info {
+      padding: 15px;
+    }
+
+    .gallery-title {
+      font-weight: 700;
+      color: var(--text-hi);
+      font-size: .9rem;
+      margin-bottom: 5px;
+    }
+
+    .gallery-desc {
+      font-size: .7rem;
+      color: var(--text-dim);
+      height: 3em;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+
     @media (max-width: 480px) {
       .logo-info p {
         display: none;
@@ -2405,6 +2495,9 @@
         <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
           <div class="theme-icons"><span>🌙</span><span>☀️</span></div>
         </button>
+        <button class="btn btn-sm btn-lab"
+          style="font-size:.66rem;background:var(--bg3);border:1px solid var(--accent2);color:var(--accent2)"
+          onclick="toggleLabMode()" title="Workbench Mode">🔬 LAB MODE</button>
         <button class="btn btn-sm" style="font-size:.66rem" onclick="saveCircuit()">💾 Save</button>
         <button class="btn btn-orange" onclick="exportPDF()">📄 PDF</button>
         <button class="btn btn-sm" style="font-size:.66rem" onclick="toggleShortcuts()"
@@ -2442,6 +2535,10 @@
       <button class="tab" onclick="switchTab('templates',this)"><span>📋</span>Templates<span
           class="tab-badge"></span></button>
       <button class="tab" onclick="switchTab('saved',this)"><span>🗂️</span>Saved<span
+          class="tab-badge"></span></button>
+      <button class="tab" id="tab-btn-gallery" onclick="switchTab('gallery',this)"><span>🌍</span>Community<span
+          class="tab-badge"></span></button>
+      <button class="tab" id="tab-btn-architect" onclick="switchTab('architect',this)"><span>🧩</span>Architect<span
           class="tab-badge"></span></button>
     </div>
 
@@ -3201,6 +3298,69 @@
       </div>
     </div>
 
+    <!-- ═══ ARCHITECT ═════════════════════════════════════════════════════════ -->
+    <div id="tab-architect" class="tab-content">
+      <div class="workspace" style="display:grid; grid-template-columns: 1fr 1.5fr; gap: 20px;">
+        <div class="panel">
+          <div class="panel-hdr"><span class="panel-title">// DEFINE CUSTOM COMPONENT</span></div>
+          <div class="panel-body">
+            <div class="ohm-field" style="margin-bottom:12px;">
+              <label>PART NAME</label>
+              <input type="text" id="arc-name" placeholder="e.g. MySens-V1" />
+            </div>
+            <div class="ohm-field" style="margin-bottom:12px;">
+              <label>CATEGORY</label>
+              <select id="arc-type" class="btn"
+                style="width:100%;text-align:left;background:var(--input-bg);border-color:var(--border)">
+                <option value="ic">Integrated Circuit (IC)</option>
+                <option value="sensor">Sensor Module</option>
+                <option value="mcu">Microcontroller</option>
+                <option value="transistor">Transistor / FET</option>
+                <option value="other">Other / Custom</option>
+              </select>
+            </div>
+            <div class="ohm-field" style="margin-bottom:12px;">
+              <label>PINOUT (Comma-separated)</label>
+              <input type="text" id="arc-pins" placeholder="VCC, GND, SDA, SCL" />
+            </div>
+            <div class="ohm-field" style="margin-bottom:15px;">
+              <label>SPECIFICATIONS / NOTES</label>
+              <textarea id="arc-specs" placeholder="Operating voltage, physical dimensions, etc."
+                style="width:100%;height:80px;background:var(--input-bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:8px;font-size:.75rem;outline:none;"></textarea>
+            </div>
+            <button class="btn btn-primary" style="width:100%" onclick="saveCustomPart()">✨ Register Component</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-hdr"><span class="panel-title">// YOUR CUSTOM LIBRARY</span></div>
+          <div class="panel-body">
+            <div id="arc-list" class="dash-grid" style="grid-template-columns: 1fr;">
+              <p style="font-size:.72rem;color:var(--text-dim);text-align:center;">No custom components defined yet.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ GALLERY ═══════════════════════════════════════════════════════════ -->
+    <div id="tab-gallery" class="tab-content">
+      <div class="workspace" style="display:block;">
+        <div class="panel">
+          <div class="panel-hdr">
+            <span class="panel-title">// COMMUNITY CHALLENGES & DESIGNS</span>
+            <button class="btn btn-sm" onclick="loadGallery()">🔄 Refresh</button>
+          </div>
+          <div class="panel-body">
+            <div id="gallery-list" class="gallery-grid">
+              <div class="loading">
+                <div class="spinner"></div>Loading Community Designs...
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ═══ SHORTCUTS MODAL ═══════════════════════════════════════════════════ -->
     <div class="modal-overlay" id="shortcuts-modal" onclick="if(event.target===this)toggleShortcuts()">
       <div class="modal" style="position:relative">
@@ -3287,6 +3447,8 @@
       if (name === 'dashboard') renderDashboard();
       if (name === 'breadboard') initBreadboard();
       if (name === 'saved') loadSavedList();
+      if (name === 'gallery') loadGallery();
+      if (name === 'architect') renderArchitect();
       if (name === 'waveform') { setTimeout(() => { drawWave(); }, 100); }
     }
 
@@ -3987,8 +4149,10 @@
     // ── SAVE/LOAD ─────────────────────────────────────────────────────────────
     async function saveCircuit() {
       const name = document.getElementById('project-name').value.trim() || 'Untitled Circuit';
+      const is_public = confirm("🌐 Make this circuit PUBLIC in the Community Gallery?");
       const payload = {
-        name, schematic_image: S.sch.lastImage,
+        name, is_public,
+        schematic_image: S.sch.lastImage,
         schematic_description: document.getElementById('sch-desc').textContent || '',
         components: S.sch.lastSchema?.components || [],
         simulation: S.sim.lastSim, arduino_code: S.ard.lastCode, bom: S.bom.lastBom
@@ -3996,11 +4160,61 @@
       try {
         const res = await fetch('/api/save-circuit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
         const data = await res.json();
-        // Brief visual feedback
         const btn = document.querySelector('.btn-sm');
-        const orig = btn.textContent; btn.textContent = '✅ Saved!';
+        const orig = btn.textContent; btn.textContent = '✅ Cloud Saved!';
         setTimeout(() => btn.textContent = orig, 2000);
+        if (is_public) loadGallery();
       } catch (e) { alert('Save failed: ' + e.message); }
+    }
+
+    // ── GALLERY LOGIC ─────────────────────────────────────────────────────────
+    async function loadGallery() {
+      const el = document.getElementById('gallery-list');
+      try {
+        const res = await fetch('/api/gallery');
+        const data = await res.json();
+        if (!data.gallery || !data.gallery.length) {
+          el.innerHTML = '<div class="placeholder"><p>No public circuits yet. Be the first to share!</p></div>';
+          return;
+        }
+        el.innerHTML = data.gallery.map(c => `
+          <div class="gallery-card">
+            <img class="gallery-img" src="data:image/png;base64,${c.image}" onerror="this.src='https://via.placeholder.com/300x160/0a0f1c/00c8f0?text=Schematic'"/>
+            <div class="gallery-info">
+              <div class="gallery-title">⚡ ${c.name}</div>
+              <div class="gallery-desc">${c.description || 'No description provided.'}</div>
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:.6rem;color:var(--text-dim)">${c.saved_at}</span>
+                <button class="btn btn-sm btn-primary" onclick="loadFromGallery('${c.id}')">🍴 Fork</button>
+              </div>
+            </div>
+          </div>`).join('');
+      } catch (e) { el.innerHTML = '<p>Failed to load gallery.</p>'; }
+    }
+
+    async function loadFromGallery(id) {
+      try {
+        const res = await fetch(`/api/load-circuit/${id}`);
+        const data = await res.json();
+        S.sch.lastSchema = data.components ? { components: data.components, description: data.schematic_description, title: data.name } : null;
+        S.sch.lastImage = data.schematic_image;
+        document.getElementById('project-name').value = data.name + " (forked)";
+        showToast('🍴 Circuit forked to your workspace!');
+        switchTab('schematic', document.querySelectorAll('.tab')[1]);
+        if (data.schematic_image) {
+          document.getElementById('sch-img').src = 'data:image/png;base64,' + data.schematic_image;
+          document.getElementById('sch-img').style.display = 'block';
+          document.getElementById('sch-ph').style.display = 'none';
+        }
+      } catch (e) { showToast('❌ Failed to fork circuit.'); }
+    }
+
+    function toggleLabMode() {
+      document.body.classList.toggle('lab-mode');
+      const active = document.body.classList.contains('lab-mode');
+      const btn = document.querySelector('.btn-lab');
+      btn.textContent = active ? '🏠 NORMAL MODE' : '🔬 LAB MODE';
+      showToast(active ? '🔬 Lab Mode Enabled: High-visibility for the workbench' : '🏠 Returning to Normal Mode');
     }
 
     async function loadSavedList() {
@@ -4440,10 +4654,66 @@
       document.getElementById('555-result').textContent = `Freq: ${freq < 1000 ? freq.toFixed(1) + ' Hz' : (freq / 1000).toFixed(2) + ' kHz'} · Duty: ${duty.toFixed(1)}%`;
     }
 
-    // ── FUNCTION PATCHING (Badges & History) ─────────────────────────────────
+    // ── ARCHITECT LOGIC ──────────────────────────────────────────────────────
+    let customParts = JSON.parse(localStorage.getItem('cc_custom_parts') || '[]');
+    function saveCustomPart() {
+      const name = document.getElementById('arc-name').value.trim();
+      const type = document.getElementById('arc-type').value;
+      const pins = document.getElementById('arc-pins').value.trim();
+      const specs = document.getElementById('arc-specs').value.trim();
+      if (!name || !pins) { showToast('⚠ Name and Pins are required!'); return; }
+
+      const part = { id: Date.now(), name, type, pins, specs };
+      customParts.unshift(part);
+      localStorage.setItem('cc_custom_parts', JSON.stringify(customParts));
+      renderArchitect();
+      showToast('✨ Component added to library!');
+      // Clear fields
+      document.getElementById('arc-name').value = '';
+      document.getElementById('arc-pins').value = '';
+      document.getElementById('arc-specs').value = '';
+    }
+    function renderArchitect() {
+      const list = document.getElementById('arc-list');
+      if (!customParts.length) {
+        list.innerHTML = '<p style="font-size:.72rem;color:var(--text-dim);text-align:center;">No custom components defined yet.</p>';
+        return;
+      }
+      list.innerHTML = customParts.map(p => `
+        <div class="audit-item audit-tip" style="margin-bottom:8px;border-left:4px solid var(--accent)">
+          <div class="audit-icon">IC</div>
+          <div class="audit-content">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <h5>${p.name} <small style="color:var(--text-dim)">(${p.type})</small></h5>
+              <button class="btn btn-sm" onclick="deletePart(${p.id})" style="padding:2px 6px;">✕</button>
+            </div>
+            <p><strong>Pins:</strong> ${p.pins}</p>
+            <p style="font-style:italic;margin-top:4px;">${p.specs || 'No specs provided.'}</p>
+          </div>
+        </div>`).join('');
+    }
+    function deletePart(id) {
+      customParts = customParts.filter(p => p.id !== id);
+      localStorage.setItem('cc_custom_parts', JSON.stringify(customParts));
+      renderArchitect();
+    }
+    setTimeout(renderArchitect, 250);
+
+    // ── FUNCTION PATCHING (Inject Custom Parts into AI Prompt) ────────────────
     const _origRunSchematic = window.runSchematic;
     window.runSchematic = async function () {
+      // Temporarily modify the global prompt or context if needed
+      // Here we'll append the custom parts library to the user prompt internally
+      const input = document.getElementById('sch-input');
+      const originalVal = input.value;
+      if (customParts.length) {
+        const partsInfo = customParts.map(p => `[CUSTOM PART: Name: ${p.name}, Pins: ${p.pins}, Specs: ${p.specs}]`).join(' ');
+        input.value += ` (You can use these custom components from my library: ${partsInfo})`;
+      }
+
       await _origRunSchematic();
+
+      input.value = originalVal; // Restore UI
       if (S.sch.lastSchema) {
         document.getElementById('sch-audit').style.display = 'inline-flex';
         document.getElementById('sch-eda').style.display = 'inline-flex';
