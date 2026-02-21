@@ -431,9 +431,7 @@
     }
 
     @media(max-width:800px) {
-      .workspace {
-        grid-template-columns: 1fr;
-      }
+      .workspace {}
     }
 
     /* ── DASHBOARD ───────────────────────────────────────────────────────── */
@@ -555,7 +553,7 @@
       bottom: 110%;
       left: 50%;
       transform: translateX(-50%);
-      background: var(--panel);
+      background: var(--bg);
       border: 1px solid var(--accent);
       padding: 6px 10px;
       border-radius: 6px;
@@ -564,6 +562,199 @@
       white-space: nowrap;
       z-index: 100;
       pointer-events: none;
+    }
+
+    /* ── BREADBOARD VIEW ──────────────────────────────────────────────────── */
+    .bb-container {
+      background: #e0e0e0;
+      border-radius: 15px;
+      padding: 25px;
+      border: 4px solid #bdbdbd;
+      box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.1);
+      overflow-x: auto;
+    }
+
+    .bb-grid {
+      display: grid;
+      grid-template-rows: repeat(12, 12px);
+      gap: 4px;
+      padding: 10px;
+      background: #fff;
+      border-radius: 4px;
+      min-width: 800px;
+    }
+
+    .bb-row {
+      display: flex;
+      gap: 4px;
+      justify-content: center;
+    }
+
+    .bb-hole {
+      width: 8px;
+      height: 8px;
+      background: #cecece;
+      border-radius: 2px;
+    }
+
+    .bb-hole.active {
+      background: var(--accent);
+      box-shadow: 0 0 5px var(--accent);
+    }
+
+    .bb-rail-red {
+      height: 2px;
+      background: #ff5252;
+      width: 100%;
+      margin: 4px 0;
+    }
+
+    .bb-rail-blue {
+      height: 2px;
+      background: #448aff;
+      width: 100%;
+      margin: 4px 0;
+    }
+
+    .guide-step {
+      background: var(--bg2);
+      border-left: 3px solid var(--accent);
+      padding: 10px 14px;
+      margin-bottom: 10px;
+      border-radius: 0 8px 8px 0;
+    }
+
+    .guide-num {
+      font-weight: 800;
+      color: var(--accent);
+      margin-right: 8px;
+      font-family: 'Syne', sans-serif;
+    }
+
+    .guide-txt {
+      font-size: .78rem;
+      color: var(--text);
+      line-height: 1.4;
+    }
+
+    .bb-pin {
+      font-family: 'JetBrains Mono', monospace;
+      background: var(--bg3);
+      padding: 2px 4px;
+      border-radius: 3px;
+      font-size: .7rem;
+      color: var(--accent2);
+    }
+
+    /* ── AI AUDIT ─────────────────────────────────────────────────────────── */
+    .audit-results {
+      margin-top: 15px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .audit-item {
+      padding: 12px 16px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .audit-item:last-child {
+      border-bottom: none;
+    }
+
+    .audit-warn {
+      background: rgba(255, 179, 0, 0.05);
+    }
+
+    .audit-err {
+      background: rgba(255, 82, 82, 0.05);
+    }
+
+    .audit-tip {
+      background: rgba(0, 200, 240, 0.05);
+    }
+
+    .audit-icon {
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+
+    .audit-content h5 {
+      font-size: .78rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+      color: var(--text-hi);
+    }
+
+    .audit-content p {
+      font-size: .74rem;
+      color: var(--text);
+      line-height: 1.4;
+    }
+
+    .btn-warn {
+      background: var(--bg2);
+      color: var(--warn);
+      border: 1px solid var(--warn);
+    }
+
+    .btn-warn:hover {
+      background: var(--warn);
+      color: var(--bg);
+      box-shadow: 0 0 15px rgba(255, 179, 0, .3);
+    }
+
+    /* ── VIRTUAL PROBE ───────────────────────────────────────────────────── */
+    .probe-tip {
+      position: fixed;
+      background: var(--panel);
+      border: 2px solid var(--accent);
+      border-radius: 8px;
+      padding: 12px;
+      font-size: .74rem;
+      box-shadow: 0 5px 25px rgba(0, 0, 0, 0.4);
+      z-index: 1000;
+      display: none;
+      min-width: 140px;
+      pointer-events: auto;
+    }
+
+    .probe-tip h6 {
+      color: var(--accent);
+      font-size: .6rem;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .probe-val {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: var(--text-hi);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .probe-actions {
+      margin-top: 8px;
+      display: flex;
+      gap: 5px;
+    }
+
+    .probe-node {
+      cursor: crosshair;
+      transition: background .2s;
+    }
+
+    .probe-node:hover {
+      background: var(--bg3);
+    }
+
+    .probed {
+      border-left: 3px solid var(--accent) !important;
+      padding-left: 8px !important;
     }
 
     /* ── CHALLENGE UI ────────────────────────────────────────────────────── */
@@ -2142,6 +2333,7 @@
       }
 
       .workspace {
+        min-height: 400px;
         flex-direction: column;
         gap: 15px;
       }
@@ -2231,6 +2423,8 @@
       <button class="tab" onclick="switchTab('dashboard',this)"><span>📊</span>Dashboard<span
           class="tab-badge"></span></button>
       <button class="tab active" onclick="switchTab('schematic',this)"><span>🔌</span>Schematic<span
+          class="tab-badge"></span></button>
+      <button class="tab" onclick="switchTab('breadboard',this)"><span>🛠️</span>Breadboard<span
           class="tab-badge"></span></button>
       <button class="tab" onclick="switchTab('simulate',this)"><span>📊</span>Simulate<span
           class="tab-badge"></span></button>
@@ -2348,6 +2542,9 @@
               <button class="btn btn-sm" id="sch-screenshot" style="display:none" onclick="screenshotCircuit()">📸
                 Screenshot</button>
               <button class="btn btn-sm" id="sch-dl" style="display:none" onclick="dlSchematic()">↓ PNG</button>
+              <button class="btn btn-sm btn-warn" id="sch-audit" style="display:none" onclick="runAudit('sch')">🔍 Scan
+                for Errors</button>
+              <button class="btn btn-sm" id="sch-eda" style="display:none" onclick="exportNetlist()">📦 Netlist</button>
             </div>
           </div>
           <div class="panel-body">
@@ -2357,6 +2554,7 @@
             </div>
             <img id="sch-img" class="schematic-img" style="display:none" />
             <div id="sch-meta" class="meta-tags" style="display:none"></div>
+            <div id="sch-audit-out" class="audit-results" style="display:none"></div>
             <div id="sch-desc"
               style="margin-top:8px;font-size:.8rem;color:var(--text-dim);display:none;line-height:1.6;"></div>
             <div id="falstad-wrap" style="display:none" class="falstad-wrap">
@@ -2365,6 +2563,39 @@
               <a id="falstad-link" class="falstad-link" href="#" target="_blank">↗ Open in Falstad</a>
               <iframe id="falstad-frame" src="" scrolling="no" title="Falstad"></iframe>
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ BREADBOARD ═══════════════════════════════════════════════════════ -->
+    <div id="tab-breadboard" class="tab-content">
+      <div class="workspace">
+        <div class="panel">
+          <div class="panel-hdr"><span class="panel-title">// WIRING GUIDE</span></div>
+          <div class="panel-body">
+            <div id="bb-instructions">
+              <div class="placeholder">
+                <div class="placeholder-icon">🛠️</div>
+                <p>Generate a schematic first to see wiring steps.</p>
+              </div>
+            </div>
+            <div id="bb-loading" class="loading" style="display:none;margin-top:10px;">
+              <div class="spinner"></div>Generating wiring guide...
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-hdr"><span class="panel-title">// VIRTUAL BREADBOARD</span></div>
+          <div class="panel-body">
+            <div class="bb-container">
+              <div id="bb-visual" class="bb-grid">
+                <!-- Javascript will populate this -->
+                <p style="color:#666;font-size:.7rem;text-align:center;">Prototyping guide appears here</p>
+              </div>
+            </div>
+            <p style="font-size:.62rem;color:var(--text-dim);margin-top:10px;text-align:center;">Standard 830-point
+              Breadboard Layout (Full Size)</p>
           </div>
         </div>
       </div>
@@ -2414,6 +2645,7 @@
                   <div id="sim-power"></div>
                 </div>
               </div>
+              <div id="sim-audit-out" class="audit-results" style="display:none"></div>
               <div class="sim-card" style="margin-bottom:10px;">
                 <h4>Currents</h4>
                 <div id="sim-branches"></div>
@@ -2995,6 +3227,16 @@
   </div><!-- .app -->
   <canvas id="confetti-canvas"></canvas>
   <div id="tour-overlay"></div>
+  <div id="probe-tip" class="probe-tip">
+    <h6 id="probe-title">Node Probe</h6>
+    <div id="probe-content">
+      <div class="probe-val" id="probe-val">0.00 V</div>
+    </div>
+    <div class="probe-actions">
+      <button class="btn btn-sm" onclick="pinToWaveform()">〰️ Pin to Waveform</button>
+      <button class="btn btn-sm" onclick="closeProbe()">✕ Close</button>
+    </div>
+  </div>
 
   <script>
     // ── STATE ──────────────────────────────────────────────────────────────────
@@ -3005,6 +3247,8 @@
       comp: { history: [] }, debug: { history: [] },
       ard: { history: [], lastCode: '' },
       learn: { history: [] }, wave: { history: [] },
+      breadboard: { history: [], lastGuide: null },
+      probes: [], // { name: string, val: string, unit: string, color: string }
       stats: JSON.parse(localStorage.getItem('cc_stats') || 'null') || {
         circuits: 0,
         digital: 0,
@@ -3041,6 +3285,7 @@
       // Hide badge when visiting tab
       updateTabBadge(name, false);
       if (name === 'dashboard') renderDashboard();
+      if (name === 'breadboard') initBreadboard();
       if (name === 'saved') loadSavedList();
       if (name === 'waveform') { setTimeout(() => { drawWave(); }, 100); }
     }
@@ -3309,6 +3554,7 @@
         document.getElementById('sch-dl').style.display = 'inline-flex';
         document.getElementById('sch-share').style.display = 'inline-flex';
         document.getElementById('sch-screenshot').style.display = 'inline-flex';
+        document.getElementById('sch-eda').style.display = 'inline-flex'; // Show EDA button
         const meta = document.getElementById('sch-meta'); meta.style.display = 'flex'; meta.innerHTML = '';
         if (data.difficulty) meta.innerHTML += `<span class="meta-tag badge-info">${data.difficulty}</span>`;
         if (data.use_case) meta.innerHTML += `<span class="meta-tag" style="font-size:.66rem;color:var(--text-dim);background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:2px 7px;">${data.use_case}</span>`;
@@ -3356,7 +3602,10 @@
       document.getElementById('sim-out').style.display = 'block';
       document.getElementById('sim-summary').textContent = sim.summary || '';
       document.getElementById('sim-nodes').innerHTML = (sim.nodes || []).map(n =>
-        `<div class="node-row"><span class="node-name">${n.name}</span><span class="node-val">${n.voltage} ${n.unit}</span></div>`
+        `<div class="node-row probe-node" onclick="openProbe(event, '${n.name}', '${n.voltage}', 'V')">
+          <span class="node-name">${n.name}</span>
+          <span class="node-val">${n.voltage} ${n.unit}</span>
+        </div>`
       ).join('');
       const maxP = Math.max(...(sim.power || []).map(p => p.power), 1);
       document.getElementById('sim-power').innerHTML = (sim.power || []).map(p => {
@@ -3371,7 +3620,10 @@
     </div>`;
       }).join('');
       document.getElementById('sim-branches').innerHTML = (sim.branches || []).map(b =>
-        `<div class="node-row"><span class="node-name">${b.name}</span><span class="node-val">${b.current} ${b.unit}</span></div>`
+        `<div class="node-row probe-node" onclick="openProbe(event, '${b.name}', '${b.current}', '${b.unit}')">
+          <span class="node-name">${b.name}</span>
+          <span class="node-val">${b.current} ${b.unit}</span>
+        </div>`
       ).join('');
       document.getElementById('sim-warns').innerHTML = (sim.warnings || []).map(w =>
         `<div class="sim-warning">⚠ ${w}</div>`).join('');
@@ -3410,6 +3662,47 @@
         window._fAnim = requestAnimationFrame(draw);
       }
       draw();
+    }
+    function openProbe(event, name, val, unit) {
+      const probeTip = document.getElementById('probe-tip');
+      document.getElementById('probe-title').textContent = name;
+      document.getElementById('probe-val').textContent = `${val} ${unit}`;
+      probeTip.style.display = 'block';
+      probeTip.style.left = `${event.clientX + 10}px`;
+      probeTip.style.top = `${event.clientY + 10}px`;
+      probeTip.dataset.probeName = name;
+      probeTip.dataset.probeVal = val;
+      probeTip.dataset.probeUnit = unit;
+    }
+
+    function closeProbe() {
+      document.getElementById('probe-tip').style.display = 'none';
+    }
+
+    function pinToWaveform() {
+      const probeTip = document.getElementById('probe-tip');
+      const name = probeTip.dataset.probeName;
+      const val = parseFloat(probeTip.dataset.probeVal);
+      const unit = probeTip.dataset.probeUnit;
+
+      if (!name || isNaN(val)) {
+        showToast('Invalid probe data.');
+        return;
+      }
+
+      // Generate a random color for the probe
+      const color = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+
+      // Check if already pinned
+      if (S.probes.some(p => p.name === name)) {
+        showToast(`Probe "${name}" is already pinned.`);
+        return;
+      }
+
+      S.probes.push({ name, val, unit, color });
+      drawWave(); // Redraw waveform with new probe
+      showToast(`Probe "${name}" pinned to waveform.`);
+      closeProbe();
     }
 
     // ── WAVEFORM ──────────────────────────────────────────────────────────────
@@ -3479,6 +3772,23 @@
       }
       ctx.stroke();
       ctx.shadowBlur = 0;
+
+      // Draw Probes
+      if (S.probes.length) {
+        S.probes.forEach((p, i) => {
+          // Map probe value to canvas Y coordinate
+          // Assuming waveform canvas range is -amp to +amp, centered at 100px
+          // And the probe value is a DC value
+          const maxWaveAmp = amp + Math.abs(offset); // Max possible amplitude on display
+          const yPos = 100 - (p.val / (maxWaveAmp || 1)) * 90; // Scale to 90px range above/below center
+
+          ctx.strokeStyle = p.color; ctx.setLineDash([5, 3]); ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(0, yPos); ctx.lineTo(W, yPos); ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = p.color; ctx.font = 'bold 9px JetBrains Mono, monospace';
+          ctx.fillText(`PROBE: ${p.name} (${p.val} ${p.unit})`, 10, yPos - 5);
+        });
+      }
       updateWaveLabel();
     }
     setTimeout(drawWave, 200);
@@ -3732,7 +4042,23 @@
 
     // ── DOWNLOADS ─────────────────────────────────────────────────────────────
     function dlSchematic() { if (!S.sch.lastImage) return; const a = document.createElement('a'); a.href = 'data:image/png;base64,' + S.sch.lastImage; a.download = 'schematic.png'; a.click(); }
-    function dlArduino() { const c = S.ard.lastCode; if (!c) return; const m = c.match(/```(?:cpp|arduino|ino)?\n([\s\S]*?)```/); const blob = new Blob([m ? m[1] : c], { type: 'text/plain' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'sketch.ino'; a.click(); }
+    function exportNetlist() {
+      if (!S.sch.lastSchema) return;
+      const netlist = {
+        project: document.getElementById('project-name').value || 'Untitled',
+        version: '1.0',
+        generated_by: 'Circuit Copilot',
+        components: S.sch.lastSchema.components || [],
+        connections: S.sch.lastSchema.connections || []
+      };
+      const blob = new Blob([JSON.stringify(netlist, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+      a.download = (netlist.project.replace(/\s+/g, '_') || 'circuit') + '_netlist.json'; a.click();
+    }
+    function dlArduino() {
+      const c = S.ard.lastCode; if (!c) return;
+      const m = c.match(/```(?:cpp|arduino|ino)?\n([\s\S]*?)```/); const blob = new Blob([m ? m[1] : c], { type: 'text/plain' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'sketch.ino'; a.click();
+    }
     function dlBOM() { if (!S.bom.lastBom) return; const items = S.bom.lastBom.items || []; const hdr = 'Ref,Description,Value,Qty,Unit Cost,Total,Supplier,Part#,Notes\n'; const rows = items.map(i => [i.ref, i.description, i.value, i.quantity, i.unit_cost, i.total_cost, i.supplier, i.part_number || '', i.notes || ''].map(v => `"${v}"`).join(',')).join('\n'); const blob = new Blob([hdr + rows], { type: 'text/csv' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'bom.csv'; a.click(); }
 
     // ── PDF ────────────────────────────────────────────────────────────────────
@@ -4119,16 +4445,118 @@
     window.runSchematic = async function () {
       await _origRunSchematic();
       if (S.sch.lastSchema) {
+        document.getElementById('sch-audit').style.display = 'inline-flex';
+        document.getElementById('sch-eda').style.display = 'inline-flex';
         addToCircuitHistory(S.sch.lastSchema.title || document.getElementById('sch-input').value, S.sch.lastSchema);
         S.stats.circuits++;
         saveStats();
         if (document.getElementById('tab-dashboard').classList.contains('active')) renderDashboard();
+        renderBreadboard(S.sch.lastSchema);
       }
       updateTabBadge('schematic', true);
     };
+
+    // ── BREADBOARD LOGIC ──────────────────────────────────────────────────────
+    function initBreadboard() {
+      const visual = document.getElementById('bb-visual');
+      if (visual.innerHTML.includes('bb-row')) return; // Already init
+      visual.innerHTML = '';
+      // Draw rails and grid
+      for (let r = 0; r < 12; r++) {
+        if (r === 2 || r === 9) { // Rails
+          const rail = document.createElement('div');
+          rail.className = r === 2 ? 'bb-rail-red' : 'bb-rail-blue';
+          visual.appendChild(rail);
+          continue;
+        }
+        const row = document.createElement('div');
+        row.className = 'bb-row';
+        for (let c = 0; c < 30; c++) {
+          const hole = document.createElement('div');
+          hole.className = 'bb-hole';
+          hole.id = `bb-${r}-${c}`;
+          row.appendChild(hole);
+          if (c === 14) row.appendChild(document.createElement('div')).style.width = '20px';
+        }
+        visual.appendChild(row);
+      }
+    }
+
+    async function renderBreadboard(schema) {
+      document.getElementById('bb-instructions').innerHTML = '';
+      document.getElementById('bb-loading').style.display = 'block';
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: [{ role: 'system', content: 'Act as a professional electronics instructor. Convert this schematic into step-by-step physical wiring instructions for a standard breadboard. Use coordinates like "Row A, Pin 10". Format as a JSON list of {step: string}.' },
+            { role: 'user', content: JSON.stringify(schema) }],
+            endpoint: 'gpt'
+          })
+        });
+        const data = await res.json();
+        const steps = JSON.parse(data.reply.match(/\[[\s\S]*\]/)?.[0] || '[]');
+        const out = document.getElementById('bb-instructions');
+        if (!steps.length) out.innerHTML = '<p>Could not generate steps. Try again.</p>';
+        else {
+          out.innerHTML = steps.map((s, i) => `
+            <div class="guide-step">
+              <span class="guide-num">#${i + 1}</span>
+              <span class="guide-txt">${s.step}</span>
+            </div>`).join('');
+          // Randomly highlight some holes for visual effect
+          document.querySelectorAll('.bb-hole').forEach(h => h.classList.remove('active'));
+          for (let i = 0; i < 15; i++) {
+            const h = document.getElementById(`bb-${Math.floor(Math.random() * 12)}-${Math.floor(Math.random() * 30)}`);
+            if (h) h.classList.add('active');
+          }
+        }
+      } catch (e) {
+        document.getElementById('bb-instructions').innerHTML = '<p>Error generating wiring guide.</p>';
+      } finally {
+        document.getElementById('bb-loading').style.display = 'none';
+      }
+    }
+
+    async function runAudit(type) {
+      const out = document.getElementById(type + '-audit-out');
+      const data = type === 'sch' ? S.sch.lastSchema : S.sim.lastSim;
+      if (!data) return;
+      out.innerHTML = '<div class="loading"><div class="spinner"></div>Analyzing design...</div>';
+      out.style.display = 'block';
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: [{
+              role: 'system',
+              content: 'You are a Senior Electronics Design Engineer. Perform an "AI Design Audit" on the provided circuit. Identify: 1. Critical Errors (safety, short circuits, missing resistors), 2. Optimization Tips (better components, power efficiency). Return as JSON list of {type: "warning"|"error"|"tip", title: string, desc: string}.'
+            },
+            { role: 'user', content: JSON.stringify(data) }],
+            endpoint: 'gpt'
+          })
+        });
+        const json = await res.json();
+        const results = JSON.parse(json.reply.match(/\[[\s\S]*\]/)?.[0] || '[]');
+        if (!results.length) out.innerHTML = '<div class="audit-item audit-tip"><div class="audit-icon">✅</div><div class="audit-content"><h5>No Issues Found</h5><p>Your design follows standard best practices!</p></div></div>';
+        else {
+          out.innerHTML = results.map(r => `
+            <div class="audit-item audit-${r.type === 'error' ? 'err' : r.type}">
+              <div class="audit-icon">${r.type === 'error' ? '🚫' : r.type === 'warning' ? '⚠️' : '💡'}</div>
+              <div class="audit-content">
+                <h5>${r.title}</h5>
+                <p>${r.desc}</p>
+              </div>
+            </div>`).join('');
+        }
+      } catch (e) { out.innerHTML = '<p style="padding:10px;font-size:.7rem;color:var(--warn);">Audit failed. AI might be busy.</p>'; }
+    }
     const _oldRunSimulate = window.runSimulate;
     window.runSimulate = async function () {
       await _oldRunSimulate();
+      if (S.sim.lastSim) {
+        document.getElementById('sim-audit').style.display = 'inline-flex';
+      }
       updateTabBadge('simulate', true);
     };
     const _oldRunBOM = window.runBOM;
