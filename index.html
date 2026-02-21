@@ -436,6 +436,248 @@
       }
     }
 
+    /* ── DASHBOARD ───────────────────────────────────────────────────────── */
+    .dash-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin-top: 10px;
+    }
+
+    .stat-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      transition: transform .2s;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-5px);
+      border-color: var(--accent);
+    }
+
+    .stat-val {
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: var(--accent);
+      font-family: 'Syne', sans-serif;
+      margin: 8px 0;
+    }
+
+    .stat-lbl {
+      font-size: .74rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+    }
+
+    .skill-box {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+    }
+
+    .skill-row {
+      margin-bottom: 12px;
+    }
+
+    .skill-hdr {
+      display: flex;
+      justify-content: space-between;
+      font-size: .72rem;
+      margin-bottom: 6px;
+    }
+
+    .skill-name {
+      color: var(--text-hi);
+      font-weight: 600;
+    }
+
+    .skill-pct {
+      color: var(--accent2);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .skill-bar {
+      height: 6px;
+      background: var(--bg3);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .skill-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      transition: width .5s ease-out;
+    }
+
+    .achieve-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    .badge-icon {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: var(--bg3);
+      border: 2px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      filter: grayscale(1);
+      opacity: .3;
+      transition: all .3s;
+      position: relative;
+      cursor: help;
+    }
+
+    .badge-icon.unlocked {
+      filter: grayscale(0);
+      opacity: 1;
+      border-color: var(--warn);
+      box-shadow: 0 0 15px rgba(255, 179, 0, .3);
+    }
+
+    .badge-icon:hover .badge-tip {
+      display: block;
+    }
+
+    .badge-tip {
+      display: none;
+      position: absolute;
+      bottom: 110%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--panel);
+      border: 1px solid var(--accent);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: .62rem;
+      color: var(--text);
+      white-space: nowrap;
+      z-index: 100;
+      pointer-events: none;
+    }
+
+    /* ── CHALLENGE UI ────────────────────────────────────────────────────── */
+    .challenge-box {
+      background: var(--bg2);
+      border: 1px solid var(--accent3);
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+
+    .challenge-title {
+      font-size: .8rem;
+      color: var(--accent3);
+      font-weight: 700;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .challenge-desc {
+      font-size: .76rem;
+      color: var(--text);
+      line-height: 1.5;
+      margin-bottom: 10px;
+    }
+
+    .challenge-input {
+      width: 100%;
+      min-height: 80px;
+      padding: 10px;
+      border-radius: 6px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .74rem;
+      outline: none;
+      margin-bottom: 10px;
+    }
+
+    /* ── FLASHCARDS ─────────────────────────────────────────────────────── */
+    .flash-wrap {
+      perspective: 1000px;
+      width: 100%;
+      height: 200px;
+      margin-bottom: 12px;
+      cursor: pointer;
+    }
+
+    .flash-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transition: transform 0.6s;
+      transform-style: preserve-3d;
+    }
+
+    .flash-wrap.flipped .flash-inner {
+      transform: rotateY(180deg);
+    }
+
+    .flash-face {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, .2);
+    }
+
+    .flash-front {
+      background: var(--bg2);
+    }
+
+    .flash-back {
+      background: var(--bg3);
+      transform: rotateY(180deg);
+      text-align: center;
+    }
+
+    .flash-sym {
+      font-size: 3rem;
+      margin-bottom: 10px;
+    }
+
+    .flash-name {
+      font-size: 1rem;
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .flash-desc {
+      font-size: .74rem;
+      color: var(--text-dim);
+      line-height: 1.4;
+    }
+
+    /* ── TAB SCROLLER ────────────────────────────────────────────────────── */
+    .tabs-scroller {
+      position: sticky;
+      top: 60px;
+      background: var(--bg);
+      z-index: 45;
+      border-bottom: 1px solid var(--border);
+    }
+
     /* ── PANELS ───────────────────────────────────────────────────────────── */
     .panel {
       background: var(--panel);
@@ -1986,6 +2228,8 @@
 
     <!-- TABS -->
     <div class="tabs">
+      <button class="tab" onclick="switchTab('dashboard',this)"><span>📊</span>Dashboard<span
+          class="tab-badge"></span></button>
       <button class="tab active" onclick="switchTab('schematic',this)"><span>🔌</span>Schematic<span
           class="tab-badge"></span></button>
       <button class="tab" onclick="switchTab('simulate',this)"><span>📊</span>Simulate<span
@@ -1999,11 +2243,76 @@
       <button class="tab" onclick="switchTab('arduino',this)"><span>💻</span>Arduino<span
           class="tab-badge"></span></button>
       <button class="tab" onclick="switchTab('learn',this)"><span>📚</span>Learn<span class="tab-badge"></span></button>
-      <button class="tab" onclick="switchTab('quiz',this)"><span>🎯</span>Quiz<span class="tab-badge"></span></button>
+      <button class="tab" onclick="switchTab('quiz',this)"><span>🎯</span>Quiz & Challenges<span
+          class="tab-badge"></span></button>
       <button class="tab" onclick="switchTab('templates',this)"><span>📋</span>Templates<span
           class="tab-badge"></span></button>
       <button class="tab" onclick="switchTab('saved',this)"><span>🗂️</span>Saved<span
           class="tab-badge"></span></button>
+    </div>
+
+    <!-- ═══ DASHBOARD ════════════════════════════════════════════════════════ -->
+    <div id="tab-dashboard" class="tab-content">
+      <div class="workspace" style="display:block;">
+        <div class="panel">
+          <div class="panel-hdr"><span class="panel-title">// LEARNING DASHBOARD</span></div>
+          <div class="panel-body">
+            <div class="dash-grid">
+              <div class="stat-card">
+                <div class="stat-lbl">Circuits Built</div>
+                <div class="stat-val" id="dash-circuits">0</div>
+                <p style="font-size:.64rem;color:var(--text-dim)">Keep designing!</p>
+              </div>
+              <div class="stat-card">
+                <div class="stat-lbl">Quiz Score</div>
+                <div class="stat-val" id="dash-quiz">0</div>
+                <p style="font-size:.64rem;color:var(--text-dim)">Master electronics</p>
+              </div>
+              <div class="stat-card">
+                <div class="stat-lbl">Daily Streak</div>
+                <div class="stat-val" id="dash-streak">0</div>
+                <p style="font-size:.64rem;color:var(--text-dim)">Don't break the chain!</p>
+              </div>
+            </div>
+
+            <div class="dash-grid" style="grid-template-columns: 1.2fr 1fr;">
+              <div class="skill-box">
+                <h4 style="font-size:.76rem;color:var(--accent);margin-bottom:12px;text-transform:uppercase;">Skills &
+                  Proficiency</h4>
+                <div class="skill-row">
+                  <div class="skill-hdr"><span class="skill-name">Digital Logic</span><span class="skill-pct"
+                      id="skill-digital-pct">0%</span></div>
+                  <div class="skill-bar">
+                    <div class="skill-fill" id="skill-digital" style="width:0%"></div>
+                  </div>
+                </div>
+                <div class="skill-row">
+                  <div class="skill-hdr"><span class="skill-name">Analog Components</span><span class="skill-pct"
+                      id="skill-analog-pct">0%</span></div>
+                  <div class="skill-bar">
+                    <div class="skill-fill" id="skill-analog" style="width:0%"></div>
+                  </div>
+                </div>
+                <div class="skill-row">
+                  <div class="skill-hdr"><span class="skill-name">Microcontrollers</span><span class="skill-pct"
+                      id="skill-mcu-pct">0%</span></div>
+                  <div class="skill-bar">
+                    <div class="skill-fill" id="skill-mcu" style="width:0%"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="skill-box">
+                <h4 style="font-size:.76rem;color:var(--accent);margin-bottom:12px;text-transform:uppercase;">
+                  Achievements</h4>
+                <div class="achieve-grid" id="achievements">
+                  <!-- Badges will be generated by JS -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- ═══ SCHEMATIC ═══════════════════════════════════════════════════════ -->
@@ -2390,6 +2699,53 @@
         <div class="panel">
           <div class="panel-hdr"><span class="panel-title">// LEARN ELECTRONICS</span></div>
           <div class="panel-body">
+            <!-- FLASHCARDS -->
+            <div class="panel" style="margin-top:20px;">
+              <div class="panel-hdr"><span class="panel-title">// COMPONENT FLASHCARDS</span></div>
+              <div class="panel-body">
+                <div class="flash-wrap" id="flash-card" onclick="this.classList.toggle('flipped')">
+                  <div class="flash-inner">
+                    <div class="flash-face flash-front">
+                      <div class="flash-sym" id="flash-sym">🔋</div>
+                      <div class="flash-name" id="flash-name">Battery</div>
+                      <p style="font-size:.64rem;color:var(--text-dim);margin-top:10px;">Click to reveal...</p>
+                    </div>
+                    <div class="flash-face flash-back">
+                      <div class="flash-desc" id="flash-desc">Stores chemical energy and converts it to electrical
+                        energy. Provides the voltage source for the circuit.</div>
+                    </div>
+                  </div>
+                </div>
+                <div style="display:flex;gap:10px;">
+                  <button class="btn btn-secondary" style="flex:1" onclick="prevFlash()">Back</button>
+                  <button class="btn btn-primary" style="flex:1" onclick="nextFlash()">Next Card</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- GUIDED PROJECTS -->
+            <div class="panel" style="margin-top:20px;">
+              <div class="panel-hdr"><span class="panel-title">// GUIDED PROJECTS</span></div>
+              <div class="panel-body">
+                <p style="font-size:.64rem;color:var(--text-dim);margin-bottom:12px;">Step-by-step builds for common
+                  circuits.</p>
+                <div class="examples" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                  <button class="chip" style="text-align:left;height:auto;padding:8px;"
+                    onclick="qs('learn','Guide me through building an Arduino Weather Station with DHT11')">🌡️ Project
+                    1: Weather Station</button>
+                  <button class="chip" style="text-align:left;height:auto;padding:8px;"
+                    onclick="qs('learn','Show me how to make a 555 Timer PWM Motor Controller')">⚙️ Project 2: Motor
+                    Control</button>
+                  <button class="chip" style="text-align:left;height:auto;padding:8px;"
+                    onclick="qs('learn','Step-by-step guide for a dark-activated night light with LDR')">🌙 Project 3:
+                    Night Light</button>
+                  <button class="chip" style="text-align:left;height:auto;padding:8px;"
+                    onclick="qs('learn','How to build a simple Class A Audio Amplifier?')">🔊 Project 4: Audio
+                    Amp</button>
+                </div>
+              </div>
+            </div>
+
             <div class="chat-area" id="learn-chat"></div>
             <div class="chat-input-row">
               <textarea id="learn-input" placeholder="e.g. How does a capacitor work?"></textarea>
@@ -2518,6 +2874,32 @@
                 <div class="node-row"><span class="node-name">Current streak</span><span class="node-val"
                     style="color:var(--warn)" id="stat-streak">0 🔥</span></div>
               </div>
+
+              <!-- CHALLENGES -->
+              <div class="panel" style="margin-top:15px; border: 1px solid var(--accent3);">
+                <div class="panel-hdr"><span class="panel-title" style="color:var(--accent3)">// DESIGN
+                    CHALLENGES</span></div>
+                <div class="panel-body">
+                  <div id="challenge-setup">
+                    <p style="font-size:.7rem;color:var(--text-dim);margin-bottom:10px;">Apply your knowledge to AI
+                      design prompts.</p>
+                    <button class="btn btn-orange" style="width:100%;font-size:.7rem;" onclick="genChallenge()">Generate
+                      Challenge</button>
+                  </div>
+                  <div id="challenge-box" style="display:none">
+                    <div class="challenge-box">
+                      <div class="challenge-title"><span>🏆</span> <span id="chall-title">Design Task</span></div>
+                      <div class="challenge-desc" id="chall-desc"></div>
+                      <textarea class="challenge-input" id="chall-input"
+                        placeholder="Explain your solution..."></textarea>
+                      <button class="btn btn-primary" style="width:100%" onclick="submitChallenge()">Submit</button>
+                    </div>
+                    <div id="chall-result" class="msg assistant" style="display:none;font-size:.7rem;margin-top:8px;">
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div class="sim-card">
                 <h4>Topic History</h4>
                 <div id="quiz-history"
@@ -2623,7 +3005,15 @@
       comp: { history: [] }, debug: { history: [] },
       ard: { history: [], lastCode: '' },
       learn: { history: [] }, wave: { history: [] },
+      stats: JSON.parse(localStorage.getItem('cc_stats') || 'null') || {
+        circuits: 0,
+        digital: 0,
+        analog: 0,
+        mcu: 0,
+        achievements: []
+      }
     };
+    function saveStats() { localStorage.setItem('cc_stats', JSON.stringify(S.stats)); }
     let pdfData = {};
 
     // Quiz state — load from localStorage
@@ -2650,8 +3040,129 @@
       btn.classList.add('active');
       // Hide badge when visiting tab
       updateTabBadge(name, false);
+      if (name === 'dashboard') renderDashboard();
       if (name === 'saved') loadSavedList();
       if (name === 'waveform') { setTimeout(() => { drawWave(); }, 100); }
+    }
+
+    // ── DASHBOARD ─────────────────────────────────────────────────────────────
+    const ACHIEVEMENTS = [
+      { id: 'first_cir', icon: '🔋', title: 'First Circuit', desc: 'Generate your first schematic', req: s => s.circuits >= 1 },
+      { id: 'designer', icon: '🎨', title: 'Designer', desc: 'Generate 5 schematics', req: s => s.circuits >= 5 },
+      { id: 'engineer', icon: '🏗️', title: 'Circuit Engineer', desc: 'Generate 20 schematics', req: s => s.circuits >= 20 },
+      { id: 'quiz_intro', icon: '📝', title: 'Quizzer', desc: 'Answer 5 quiz questions', req: (s, q) => q.total >= 5 },
+      { id: 'streak_3', icon: '🔥', title: 'On Fire', desc: 'Get a 3-question streak', req: (s, q) => q.streak >= 3 },
+      { id: 'perfectionist', icon: '💎', title: 'Perfectionist', desc: 'Reach 100% accuracy (min 10 q)', req: (s, q) => q.total >= 10 && q.score === q.total },
+      { id: 'digital_master', icon: '🎛️', title: 'Digital Master', desc: 'Get 10 digital logic questions correct', req: s => s.digital >= 10 },
+      { id: 'analog_master', icon: '📈', title: 'Analog Master', desc: 'Get 10 analog questions correct', req: s => s.analog >= 10 },
+      { id: 'mcu_master', icon: '💻', title: 'MCU Master', desc: 'Get 10 microcontroller questions correct', req: s => s.mcu >= 10 }
+    ];
+
+    function renderDashboard() {
+      document.getElementById('dash-circuits').textContent = S.stats.circuits;
+      document.getElementById('dash-quiz').textContent = quiz.score + ' / ' + quiz.total;
+      document.getElementById('dash-streak').textContent = quiz.streak;
+
+      // Skills
+      const updateSkill = (id, val) => {
+        const pct = Math.min(100, Math.floor((val / 10) * 100)); // 10 is "mastery" for now
+        document.getElementById(`skill-${id}-pct`).textContent = pct + '%';
+        document.getElementById(`skill-${id}`).style.width = pct + '%';
+      };
+      updateSkill('digital', S.stats.digital);
+      updateSkill('analog', S.stats.analog);
+      updateSkill('mcu', S.stats.mcu);
+
+      // Achievements
+      const achieveContainer = document.getElementById('achievements');
+      achieveContainer.innerHTML = ACHIEVEMENTS.map(a => {
+        const unlocked = S.stats.achievements.includes(a.id) || a.req(S.stats, quiz);
+        if (unlocked && !S.stats.achievements.includes(a.id)) {
+          S.stats.achievements.push(a.id);
+          saveStats();
+          showToast(`🏆 Achievement Unlocked: ${a.title}!`);
+        }
+        return `
+          <div class="badge-icon ${unlocked ? 'unlocked' : ''}">
+            ${a.icon}
+            <div class="badge-tip"><strong>${a.title}</strong><br>${a.desc}</div>
+          </div>
+        `;
+      }).join('');
+    }
+    setTimeout(() => {
+      renderDashboard();
+      renderFlash();
+    }, 200);
+
+    // ── FLASHCARDS ────────────────────────────────────────────────────────────
+    const FLASH_DECK = [
+      { sym: '🔋', name: 'Battery', desc: 'Voltage source. Stores energy chemically. DC power.' },
+      { sym: '〰️', name: 'Resistor', desc: 'Limits current flow. Measured in Ohms (Ω). V=IR.' },
+      { sym: '🎚️', name: 'Potentiometer', desc: 'Variable resistor. Used for volume, dimming, etc.' },
+      { sym: '🥛', name: 'Capacitor', desc: 'Stores charge in an electric field. Blocks DC, passes AC.' },
+      { sym: '🌀', name: 'Inductor', desc: 'Stores energy in a magnetic field. Resists changes in current.' },
+      { sym: '🔌', name: 'Diode', desc: 'One-way valve for current. Forward voltage drop ~0.7V.' },
+      { sym: '💡', name: 'LED', desc: 'Light Emitting Diode. Specialized diode that emits light.' },
+      { sym: '🔀', name: 'Transistor', desc: 'Electronic switch or amplifier. NPN/PNP types.' },
+      { sym: '💻', name: 'Integrated Circuit', desc: 'Miniaturized circuit containing thousands of components.' },
+      { sym: '🔊', name: 'Buzzer', desc: 'Converts electrical energy to sound. Active or passive.' }
+    ];
+    let flashIdx = 0;
+    function renderFlash() {
+      const c = FLASH_DECK[flashIdx];
+      document.getElementById('flash-sym').textContent = c.sym;
+      document.getElementById('flash-name').textContent = c.name;
+      document.getElementById('flash-desc').textContent = c.desc;
+      document.getElementById('flash-card').classList.remove('flipped');
+    }
+    function nextFlash() { flashIdx = (flashIdx + 1) % FLASH_DECK.length; renderFlash(); }
+    function prevFlash() { flashIdx = (flashIdx - 1 + FLASH_DECK.length) % FLASH_DECK.length; renderFlash(); }
+
+    // ── CHALLENGES ────────────────────────────────────────────────────────────
+    async function genChallenge() {
+      const btn = document.querySelector('button[onclick="genChallenge()"]');
+      btn.disabled = true; btn.textContent = 'Generating...';
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: [{ role: 'system', content: 'Generate a short electronics design challenge for a beginner/intermediate student. Return in format Title: [title] Description: [desc]' }],
+            endpoint: 'gpt'
+          })
+        });
+        const data = await res.json();
+        const text = data.reply || '';
+        const tMatch = text.match(/Title:\s*(.*)\n/i);
+        const dMatch = text.match(/Description:\s*([\s\S]*)/i);
+        document.getElementById('chall-title').textContent = tMatch ? tMatch[1].trim() : 'Design Task';
+        document.getElementById('chall-desc').textContent = dMatch ? dMatch[1].trim() : text;
+        document.getElementById('challenge-box').style.display = 'block';
+        document.getElementById('chall-result').style.display = 'none';
+        document.getElementById('chall-input').value = '';
+      } catch (e) { showErr('challenge-box', 'Failed to generate challenge'); }
+      finally { btn.disabled = false; btn.textContent = 'Generate New Challenge'; }
+    }
+
+    async function submitChallenge() {
+      const ans = document.getElementById('chall-input').value.trim();
+      if (!ans) return;
+      const resEl = document.getElementById('chall-result');
+      resEl.style.display = 'block'; resEl.innerHTML = '<div class="spinner"></div> Validating...';
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: [{ role: 'system', content: `Validate this design challenge submission. Challenge: ${document.getElementById('chall-desc').textContent}. Submission: ${ans}. Be encouraging but technically precise.` }],
+            endpoint: 'gpt'
+          })
+        });
+        const data = await res.json();
+        resEl.innerHTML = marked.parse(data.reply || 'No response');
+        fireConfetti();
+        S.stats.mcu++; saveStats(); // Give XP for challenges
+        renderDashboard();
+      } catch (e) { resEl.textContent = 'Validation failed'; }
     }
 
     // ── TAB BADGES ─────────────────────────────────────────────────────────────
@@ -3070,168 +3581,48 @@
         {
           q: "What is the purpose of a resistor in an LED circuit?",
           opts: ["Increase brightness", "Limit current to prevent LED burnout", "Store electrical charge", "Reverse current direction"],
-          ans: 1, exp: "LEDs have a very low forward resistance. Without a current-limiting resistor, too much current flows and the LED burns out. Use <strong>Ohm's Law: R = (Vs - Vf) / If</strong> to calculate the right value."
+          ans: 1, topic: 'analog', exp: "LEDs have a very low forward resistance. Without a current-limiting resistor, too much current flows and the LED burns out. Use <strong>Ohm's Law: R = (Vs - Vf) / If</strong> to calculate the right value."
         },
-        {
-          q: "What does Ohm's Law state?",
-          opts: ["V = I × R", "P = V × I", "V = P / R", "I = P × V"],
-          ans: 0, exp: "<strong>V = I × R</strong> — Voltage equals Current times Resistance. This is the most fundamental law in electronics, relating three key quantities."
-        },
+        { q: "What is Ohm's Law?", opts: ["V = I × R", "I = V × R", "R = V × I", "P = V × I"], ans: 0, topic: 'analog', exp: "<strong>V = I × R</strong> (Voltage = Current × Resistance) is the most fundamental law in electronics. It defines the relationship between these three quantities in any resistive circuit." },
         {
           q: "What is the unit of electrical resistance?",
           opts: ["Ampere", "Volt", "Ohm (Ω)", "Watt"],
-          ans: 2, exp: "Resistance is measured in <strong>Ohms (Ω)</strong>, named after Georg Ohm. 1 Ω means 1 volt produces 1 ampere of current."
+          ans: 2, topic: 'analog', exp: "Resistance is measured in <strong>Ohms (Ω)</strong>, named after Georg Ohm. 1 Ω means 1 volt produces 1 ampere of current."
         },
-        {
-          q: "In a series circuit, how does current behave?",
-          opts: ["It splits between components", "It is the same through all components", "It increases at each component", "It decreases at each component"],
-          ans: 1, exp: "In a <strong>series circuit</strong>, current is the same everywhere — there's only one path for current to flow. Voltage, however, splits across each component."
-        },
-        {
-          q: "What component stores electrical charge?",
-          opts: ["Resistor", "Inductor", "Capacitor", "Diode"],
-          ans: 2, exp: "A <strong>capacitor</strong> stores electrical energy as an electric field between two plates. The amount stored is Q = C × V, where C is capacitance in Farads."
-        },
-        {
-          q: "What does an LED stand for?",
-          opts: ["Light Emitting Diode", "Low Energy Device", "Lateral Electronic Driver", "Light Enhancing Detector"],
-          ans: 0, exp: "<strong>Light Emitting Diode</strong> — a semiconductor device that emits light when current flows in the forward direction. Different materials give different colors."
-        },
-        {
-          q: "What is the function of a diode?",
-          opts: ["Amplify signals", "Allow current to flow in only one direction", "Store energy", "Measure voltage"],
-          ans: 1, exp: "A <strong>diode</strong> is a one-way valve for electric current. It allows current to flow from anode to cathode (forward bias) and blocks it in the reverse direction. The forward voltage drop is ~0.7V for silicon diodes."
-        },
-        {
-          q: "What does 'ground' (GND) mean in a circuit?",
-          opts: ["The Earth itself", "A dangerous connection", "The common reference point at 0V", "An insulated wire"],
-          ans: 2, exp: "<strong>Ground (GND)</strong> is the common reference point in a circuit, defined as 0 volts. All other voltages are measured relative to ground. It's not necessarily connected to the Earth."
-        },
-        {
-          q: "What happens to total resistance when you add resistors in parallel?",
-          opts: ["It increases", "It stays the same", "It decreases", "It doubles"],
-          ans: 2, exp: "In <strong>parallel</strong>, total resistance <em>decreases</em>: 1/Rt = 1/R1 + 1/R2. Two identical 10kΩ resistors in parallel = 5kΩ. More paths = less total resistance."
-        },
-        {
-          q: "What is the purpose of a fuse in a circuit?",
-          opts: ["Increase voltage", "Protect by breaking the circuit on overcurrent", "Store energy", "Amplify signals"],
-          ans: 1, exp: "A <strong>fuse</strong> is a safety device — a thin wire that melts if too much current flows, breaking the circuit and protecting components from damage. Always replace with the same rating."
-        },
-        {
-          q: "What is the difference between AC and DC?",
-          opts: ["AC is faster than DC", "DC changes direction, AC stays constant", "AC changes direction periodically, DC flows one way", "They are the same thing"],
-          ans: 2, exp: "<strong>DC (Direct Current)</strong> flows in one direction (batteries). <strong>AC (Alternating Current)</strong> periodically reverses direction, typically at 50Hz or 60Hz (wall outlets). Most electronics internally use DC."
-        },
-        {
-          q: "What is a breadboard used for?",
-          opts: ["Cutting bread", "Permanent circuit mounting", "Temporary prototyping without soldering", "Measuring voltage"],
-          ans: 2, exp: "A <strong>breadboard</strong> allows you to build temporary circuits by pushing component leads into holes that are internally connected. No soldering needed — perfect for prototyping and learning."
-        },
+        { q: "In a series circuit, how does current behave?", opts: ["It splits between components", "It is the same through all components", "It increases at each component", "It decreases at each component"], ans: 1, topic: 'analog', exp: "In a <strong>series circuit</strong>, current is the same everywhere — there's only one path for current to flow. Voltage, however, splits across each component." },
+        { q: "What component stores electrical charge?", opts: ["Resistor", "Inductor", "Capacitor", "Diode"], ans: 2, topic: 'analog', exp: "A <strong>capacitor</strong> stores electrical energy as an electric field between two plates. The amount stored is Q = C × V, where C is capacitance in Farads." },
+        { q: "What does an LED stand for?", opts: ["Light Emitting Diode", "Low Energy Device", "Lateral Electronic Driver", "Light Enhancing Detector"], ans: 0, topic: 'analog', exp: "<strong>Light Emitting Diode</strong> — a semiconductor device that emits light when current flows in the forward direction." },
+        { q: "What is the function of a diode?", opts: ["Amplify signals", "Allow current to flow in only one direction", "Store energy", "Measure voltage"], ans: 1, topic: 'analog', exp: "A <strong>diode</strong> is a one-way valve for electric current. It allows current to flow from anode to cathode and blocks it in reverse." },
+        { q: "What does 'ground' (GND) mean in a circuit?", opts: ["The Earth itself", "A dangerous connection", "The common reference point at 0V", "An insulated wire"], ans: 2, topic: 'analog', exp: "<strong>Ground (GND)</strong> is the common reference point in a circuit, defined as 0 volts." },
+        { q: "What happens to total resistance when you add resistors in parallel?", opts: ["It increases", "It stays the same", "It decreases", "It doubles"], ans: 2, topic: 'analog', exp: "In <strong>parallel</strong>, total resistance <em>decreases</em>: 1/Rt = 1/R1 + 1/R2." },
+        { q: "What is the purpose of a fuse in a circuit?", opts: ["Increase voltage", "Protect by breaking the circuit on overcurrent", "Store energy", "Amplify signals"], ans: 1, topic: 'analog', exp: "A <strong>fuse</strong> is a safety device that melts if too much current flows, protecting components." },
+        { q: "What is the difference between AC and DC?", opts: ["AC is faster than DC", "DC changes direction, AC stays constant", "AC changes direction periodically, DC flows one way", "They are the same thing"], ans: 2, topic: 'analog', exp: "<strong>DC</strong> flows in one direction; <strong>AC</strong> periodically reverses direction." },
+        { q: "What is a breadboard used for?", opts: ["Cutting bread", "Permanent circuit mounting", "Temporary prototyping without soldering", "Measuring voltage"], ans: 2, topic: 'analog', exp: "A <strong>breadboard</strong> allows you to build temporary circuits without soldering." },
       ],
       intermediate: [
-        {
-          q: "A 9V battery powers an LED (Vf=2V) with a 220Ω resistor. What is the current?",
-          opts: ["9mA", "31.8mA", "40.9mA", "22mA"],
-          ans: 1, exp: "Using Ohm's Law: <strong>I = (Vs - Vf) / R = (9 - 2) / 220 = 7/220 ≈ 31.8mA</strong>. This is slightly above the typical 20mA LED rating — a 330Ω resistor would be safer."
-        },
-        {
-          q: "What is the function of a bypass capacitor?",
-          opts: ["Amplify signal", "Filter AC noise from DC power supply", "Store energy for motors", "Block DC current"],
-          ans: 1, exp: "A <strong>bypass (decoupling) capacitor</strong> placed near an IC's power pins filters out high-frequency noise from the power supply, preventing glitches. Typical values: 100nF ceramic."
-        },
-        {
-          q: "In an NPN transistor, what controls the collector current?",
-          opts: ["Emitter voltage", "Base current", "Collector voltage", "Supply voltage"],
-          ans: 1, exp: "In an <strong>NPN transistor</strong>, a small base current controls a much larger collector current. This is the transistor's amplification effect: Ic = β × Ib, where β (hFE) is the gain."
-        },
-        {
-          q: "What is the voltage divider output with 10kΩ and 4.7kΩ from 5V?",
-          opts: ["3.19V", "1.81V", "2.5V", "1.5V"],
-          ans: 1, exp: "Voltage divider formula: <strong>Vout = Vin × R2/(R1+R2) = 5 × 4700/(10000+4700) = 5 × 0.32 ≈ 1.6V</strong>. The bottom resistor takes the fraction R2/(R1+R2) of the supply."
-        },
-        {
-          q: "What does PWM stand for and what is it used for?",
-          opts: ["Pulse Width Modulation — controls average power/speed", "Power Wave Management — filters noise", "Partial Wave Modulation — amplifies signals", "Phase Width Measurement — measures frequency"],
-          ans: 0, exp: "<strong>Pulse Width Modulation</strong> rapidly switches power on/off. The duty cycle (% on-time) controls average power. Used for LED dimming, motor speed control, and DAC-like analog outputs from digital pins."
-        },
-        {
-          q: "What does Kirchhoff's Current Law (KCL) state?",
-          opts: ["Total voltage in a loop is zero", "Current entering a node equals current leaving it", "Power is conserved", "Resistance increases at junctions"],
-          ans: 1, exp: "<strong>KCL</strong>: The sum of currents entering a node equals the sum leaving it. No charge is created or destroyed at a junction. This is fundamental to circuit analysis."
-        },
-        {
-          q: "What is the total capacitance of two 100µF capacitors in parallel?",
-          opts: ["50µF", "100µF", "200µF", "10µF"],
-          ans: 2, exp: "Capacitors in <strong>parallel add directly</strong>: Ct = C1 + C2 = 100 + 100 = <strong>200µF</strong>. This is opposite to resistors! In series, capacitors combine like parallel resistors: 1/Ct = 1/C1 + 1/C2."
-        },
-        {
-          q: "What is an op-amp primarily used for?",
-          opts: ["Power regulation", "Signal amplification and processing", "Energy storage", "Current limiting"],
-          ans: 1, exp: "An <strong>operational amplifier (op-amp)</strong> is an extremely high-gain differential amplifier. With feedback it can amplify, filter, compare, buffer, and do math (add, subtract, integrate, differentiate) on analog signals."
-        },
-        {
-          q: "A 555 timer in astable mode — what does it produce?",
-          opts: ["DC voltage", "Single pulse", "Continuous square wave", "Sine wave"],
-          ans: 2, exp: "In <strong>astable mode</strong>, the 555 timer runs freely, producing a continuous square wave output. Frequency is set by two resistors and a capacitor: f = 1.44 / ((R1 + 2×R2) × C)."
-        },
-        {
-          q: "What happens if you connect 3 LEDs in series on a 5V supply (each Vf=2V)?",
-          opts: ["They all light normally", "Only 2 light up", "None light up — not enough voltage", "They blink"],
-          ans: 2, exp: "Three LEDs need 3 × 2V = <strong>6V minimum</strong>, but you only have 5V. There isn't enough voltage to forward-bias all three LEDs, so <strong>none will light</strong>. Use fewer LEDs or higher voltage."
-        },
-        {
-          q: "What does a pull-up resistor do on a digital input?",
-          opts: ["Increases signal speed", "Holds the pin HIGH when nothing is connected", "Reduces power consumption", "Amplifies the signal"],
-          ans: 1, exp: "A <strong>pull-up resistor</strong> (typically 10kΩ) connects between the input pin and VCC, ensuring the pin reads HIGH when no active signal is connected. Without it, the pin 'floats' and reads random noise."
-        },
+        { q: "A 9V battery powers an LED (Vf=2V) with a 220Ω resistor. What is the current?", opts: ["9mA", "31.8mA", "40.9mA", "22mA"], ans: 1, topic: 'analog', exp: "I = (9 - 2) / 220 ≈ 31.8mA." },
+        { q: "What is the function of a bypass capacitor?", opts: ["Amplify signal", "Filter AC noise from DC power supply", "Store energy for motors", "Block DC current"], ans: 1, topic: 'analog', exp: "Decoupling caps filter high-frequency noise." },
+        { q: "In an NPN transistor, what controls the collector current?", opts: ["Emitter voltage", "Base current", "Collector voltage", "Supply voltage"], ans: 1, topic: 'analog', exp: "Small base current controls large collector current." },
+        { q: "What is the voltage divider output with 10kΩ and 4.7kΩ from 5V?", opts: ["3.19V", "1.81V", "2.5V", "1.5V"], ans: 1, topic: 'analog', exp: "Vout = 5 × 4.7 / (10 + 4.7) ≈ 1.6V." },
+        { q: "What does PWM stand for and what is it used for?", opts: ["Pulse Width Modulation", "Power Wave Management", "Partial Wave Modulation", "Phase Width Measurement"], ans: 0, topic: 'digital', exp: "PWM controls average power by pulsing." },
+        { q: "What does Kirchhoff's Current Law (KCL) state?", opts: ["Total voltage is zero", "Current entering node equals current leaving", "Power is conserved", "Resistance increases"], ans: 1, topic: 'analog', exp: "Current sums to zero at a node." },
+        { q: "What is the total capacitance of two 100µF capacitors in parallel?", opts: ["50µF", "100µF", "200µF", "10µF"], ans: 2, topic: 'analog', exp: "Parallel capacitance adds: 100+100=200." },
+        { q: "What is an op-amp primarily used for?", opts: ["Power regulation", "Signal amplification", "Energy storage", "Current limiting"], ans: 1, topic: 'analog', exp: "Op-amps amplify and process analog signals." },
+        { q: "A 555 timer in astable mode produces?", opts: ["DC voltage", "Single pulse", "Continuous square wave", "Sine wave"], ans: 2, topic: 'analog', exp: "Astable 555 produces square waves." },
+        { q: "If you connect 3 LEDs in series (Vf=2V each) to 5V?", opts: ["They light", "Only 2 light", "None light", "They blink"], ans: 2, topic: 'analog', exp: "Needs 6V minimum; none will light." },
+        { q: "What does a pull-up resistor do?", opts: ["Increases speed", "Holds pin HIGH when idle", "Reduces power", "Amplifies signal"], ans: 1, topic: 'digital', exp: "Holds pin HIGH to prevent floating." },
       ],
       advanced: [
-        {
-          q: "Why does a 7805 voltage regulator get hot with 12V input delivering 500mA?",
-          opts: ["Faulty regulator", "Power dissipation: P=(12-5)×0.5=3.5W as heat", "Incorrect capacitor values", "Load resistance too low"],
-          ans: 1, exp: "The 7805 drops excess voltage as heat: <strong>P = (Vin - Vout) × I = (12-5) × 0.5 = 3.5W</strong>. This needs a heatsink. A better solution is a switching regulator (buck converter) which can achieve 90%+ efficiency."
-        },
-        {
-          q: "What is the -3dB frequency of a 10kΩ resistor and 10nF capacitor RC low-pass filter?",
-          opts: ["15.9 kHz", "1.59 kHz", "159 Hz", "15.9 Hz"],
-          ans: 1, exp: "<strong>f = 1/(2π×R×C) = 1/(2π×10000×10×10⁻⁹) = 1/(628×10⁻⁶) ≈ 1592 Hz ≈ 1.59 kHz</strong>. At this frequency, the output is 0.707× the input (-3dB). Frequencies above this are attenuated."
-        },
-        {
-          q: "A MOSFET gate needs 10V to turn on but Arduino outputs 5V. What's the best solution?",
-          opts: ["Use a logic-level MOSFET (e.g. IRLZ44N)", "Add a pull-up resistor", "Increase Arduino voltage", "Use a diode bridge"],
-          ans: 0, exp: "<strong>Logic-level MOSFETs</strong> (like IRLZ44N) are designed to fully switch on with 5V or even 3.3V gate voltage. Standard power MOSFETs (IRF540) need 10V+ at the gate to fully saturate."
-        },
-        {
-          q: "What is Thévenin's theorem used for?",
-          opts: ["Calculating power loss", "Simplifying a complex circuit to one voltage source and one resistor", "Measuring capacitance", "Designing PCB layouts"],
-          ans: 1, exp: "<strong>Thévenin's theorem</strong> lets you replace any linear circuit with an equivalent circuit: one voltage source (Vth) in series with one resistor (Rth). This massively simplifies analysis of complex networks."
-        },
-        {
-          q: "In a switching power supply (SMPS), what is the role of the inductor?",
-          opts: ["Filter noise", "Store and release energy to maintain output voltage", "Amplify current", "Protect against short circuits"],
-          ans: 1, exp: "In an <strong>SMPS</strong>, the inductor stores energy when the switch is ON and releases it when OFF, smoothing the output voltage. The inductor's energy is E = ½LI². This is why SMPS are 85-95% efficient vs linear regulators."
-        },
-        {
-          q: "What is the gain of an inverting op-amp with Rf=100kΩ and Rin=10kΩ?",
-          opts: ["+10", "-10", "+100", "-100"],
-          ans: 1, exp: "Inverting op-amp gain: <strong>Av = -Rf/Rin = -100k/10k = -10</strong>. The negative sign means the output is inverted (180° phase shift). A 1V input produces -10V output (if supply allows)."
-        },
-        {
-          q: "Why do you need a flyback diode across a relay coil?",
-          opts: ["To light an indicator", "To protect the driving transistor from voltage spikes", "To increase relay speed", "To reduce power consumption"],
-          ans: 1, exp: "When a relay coil (inductor) turns off, the collapsing magnetic field generates a large <strong>voltage spike (back-EMF)</strong> that can destroy the transistor. A flyback diode clamps this spike by providing a path for the current to dissipate safely."
-        },
-        {
-          q: "What is the resonant frequency of a 10mH inductor and 100nF capacitor?",
-          opts: ["503 Hz", "5.03 kHz", "50.3 kHz", "503 kHz"],
-          ans: 1, exp: "<strong>f = 1/(2π√(LC)) = 1/(2π√(0.01 × 100×10⁻⁹)) = 1/(2π√(10⁻⁹)) ≈ 1/(2π × 31.6µs) ≈ 5.03 kHz</strong>. At resonance, the impedance of L and C cancel out."
-        },
-        {
-          q: "What is the main advantage of a differential pair in analog circuits?",
-          opts: ["Higher power output", "Common-mode noise rejection", "Lower cost", "Simpler design"],
-          ans: 1, exp: "A <strong>differential pair</strong> amplifies the difference between two signals while rejecting noise that appears equally on both inputs (common-mode). This is the input stage of every op-amp and is critical in precision measurement."
-        },
-      ]
+        { q: "Why does a 7805 regulator get hot with 12V in, 500mA out?", opts: ["Faulty", "P=(12-5)×0.5=3.5W heat", "Capacitors", "Load resist"], ans: 1, topic: 'analog', exp: "Linear regulators drop excess voltage as heat." },
+        { q: "-3dB frequency of 10kΩ and 10nF filter?", opts: ["15.9 kHz", "1.59 kHz", "159 Hz", "15.9 Hz"], ans: 1, topic: 'analog', exp: "f = 1/(2πRC) ≈ 1.59 kHz." },
+        { q: "MOSFET gate needs 10V, Arduino is 5V. Solution?", opts: ["Logic-level MOSFET", "Pull-up", "Increase voltage", "Diode bridge"], ans: 0, topic: 'mcu', exp: "Logic-level FETs (IRLZ44N) switch at 5V." },
+        { q: "What is Thévenin's theorem used for?", opts: ["Power loss", "Simplifying complex circuits", "Measuring C", "PCB design"], ans: 1, topic: 'analog', exp: "Reduces circuit to Vth and Rth." },
+        { q: "Role of inductor in SMPS?", opts: ["Filter", "Store/release energy", "Amplify", "Protect"], ans: 1, topic: 'analog', exp: "Inductors smooth voltage by energy storage." },
+        { q: "Gain of inverting op-amp Rf=100k, Rin=10k?", opts: ["+10", "-10", "+100", "-100"], ans: 1, topic: 'analog', exp: "Av = -Rf/Rin = -10." },
+        { q: "Why flyback diode across relay coil?", opts: ["Indicator", "Protect transistor from spikes", "Speed", "Power"], ans: 1, topic: 'analog', exp: "Clamps inductive voltage spikes." },
+        { q: "Resonant frequency of 10mH and 100nF?", opts: ["503 Hz", "5.03 kHz", "50.3 kHz", "503 kHz"], ans: 1, topic: 'analog', exp: "f = 1/(2π√(LC)) ≈ 5.03 kHz." },
+        { q: "Advantage of differential pair?", opts: ["Power", "Common-mode rejection", "Cost", "Simple"], ans: 1, topic: 'analog', exp: "Rejects noise common to both inputs." },
+      ],
     };
 
     function setLevel(level, btn) {
@@ -3729,6 +4120,9 @@
       await _origRunSchematic();
       if (S.sch.lastSchema) {
         addToCircuitHistory(S.sch.lastSchema.title || document.getElementById('sch-input').value, S.sch.lastSchema);
+        S.stats.circuits++;
+        saveStats();
+        if (document.getElementById('tab-dashboard').classList.contains('active')) renderDashboard();
       }
       updateTabBadge('schematic', true);
     };
@@ -3841,11 +4235,20 @@
     // Patch answerQuiz to trigger confetti on streak >= 3
     const _origAnswerQuiz = answerQuiz;
     answerQuiz = function (idx) {
+      if (!quiz.current) return;
+      const q = quiz.current;
       _origAnswerQuiz(idx);
-      if (quiz.streak >= 3 && idx === quiz.current?.ans) {
-        fireConfetti();
-        showToast(`🔥 ${quiz.streak} streak! Keep it up!`, 2500);
+      if (idx === q.ans) {
+        if (q.topic && S.stats[q.topic] !== undefined) {
+          S.stats[q.topic]++;
+          saveStats();
+        }
+        if (quiz.streak >= 3) {
+          fireConfetti();
+          showToast(`🔥 ${quiz.streak} streak! Keep it up!`, 2500);
+        }
       }
+      if (document.getElementById('tab-dashboard').classList.contains('active')) renderDashboard();
     };
 
     // ── FEATURE 4: ONBOARDING TOUR ──────────────────────────────────────────
