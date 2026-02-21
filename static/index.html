@@ -1,0 +1,1297 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Circuit Copilot — App</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+/* ── THEME VARIABLES ──────────────────────────────────────────────────── */
+[data-theme="dark"]{
+  --bg:#07090f;--bg2:#0d1120;--bg3:#121828;--panel:#0a0f1c;
+  --border:#1c2d4a;--border2:#243550;
+  --accent:#00c8f0;--accent2:#00f090;--accent3:#ff7043;
+  --warn:#ffb300;--purple:#a855f7;
+  --text:#c4d4e8;--text-dim:#4a6a8a;--text-hi:#eaf4ff;
+  --shadow:0 4px 24px rgba(0,0,0,.5);
+  --input-bg:#060a12;
+  --chat-user:linear-gradient(135deg,#001e44,#003366);
+  --chat-asst:#121828;
+}
+[data-theme="light"]{
+  --bg:#f0f4f8;--bg2:#e4eaf2;--bg3:#d8e2ee;--panel:#ffffff;
+  --border:#c0cfe0;--border2:#a8bdd4;
+  --accent:#0077aa;--accent2:#007744;--accent3:#cc4400;
+  --warn:#bb7700;--purple:#7722cc;
+  --text:#1a2a3a;--text-dim:#6a8aaa;--text-hi:#0a1a2a;
+  --shadow:0 4px 24px rgba(0,0,0,.1);
+  --input-bg:#ffffff;
+  --chat-user:linear-gradient(135deg,#cce4ff,#aad4ff);
+  --chat-asst:#e8f0f8;
+}
+
+/* ── BASE ─────────────────────────────────────────────────────────────── */
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:'Syne',sans-serif;min-height:100vh;
+  transition:background .3s,color .3s;
+}
+[data-theme="dark"] body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:
+    linear-gradient(rgba(0,200,240,.022) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,200,240,.022) 1px,transparent 1px);
+  background-size:48px 48px;
+}
+.app{position:relative;z-index:1;max-width:1440px;margin:0 auto;padding:0 16px 24px;}
+
+/* ── HEADER ───────────────────────────────────────────────────────────── */
+header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 0 12px;border-bottom:1px solid var(--border);
+  margin-bottom:16px;flex-wrap:wrap;gap:10px;
+  position:sticky;top:0;background:var(--bg);z-index:50;
+}
+.logo{display:flex;align-items:center;gap:11px;}
+.logo-badge{
+  width:40px;height:40px;border-radius:9px;font-size:18px;
+  background:linear-gradient(135deg,var(--bg3),var(--bg2));
+  border:1.5px solid var(--accent);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 18px rgba(0,200,240,.25);
+  animation:pulse 3s ease-in-out infinite;flex-shrink:0;
+}
+@keyframes pulse{0%,100%{box-shadow:0 0 10px rgba(0,200,240,.15);}50%{box-shadow:0 0 25px rgba(0,200,240,.45);}}
+.logo-info h1{font-size:1.1rem;color:var(--accent);letter-spacing:1.5px;text-transform:uppercase;font-weight:800;}
+.logo-info p{font-size:.62rem;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;font-family:'JetBrains Mono',monospace;}
+.hdr-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--accent2);animation:blink 2s infinite;flex-shrink:0;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}
+.status-txt{font-family:'JetBrains Mono',monospace;font-size:.66rem;color:var(--accent2);}
+
+/* ── THEME TOGGLE ─────────────────────────────────────────────────────── */
+.theme-toggle{
+  width:50px;height:26px;border-radius:13px;
+  background:var(--bg3);border:1px solid var(--border2);
+  cursor:pointer;position:relative;transition:background .3s;
+  flex-shrink:0;
+}
+.theme-toggle::after{
+  content:'';position:absolute;top:3px;left:3px;
+  width:18px;height:18px;border-radius:50%;
+  background:var(--accent);transition:transform .3s;
+}
+[data-theme="light"] .theme-toggle::after{transform:translateX(24px);background:var(--warn);}
+.theme-icons{position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;padding:0 5px;font-size:10px;pointer-events:none;}
+
+/* ── BUTTONS ──────────────────────────────────────────────────────────── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  padding:8px 16px;border:none;border-radius:8px;
+  font-family:'Syne',sans-serif;font-size:.78rem;font-weight:700;
+  cursor:pointer;transition:all .2s;letter-spacing:.5px;text-transform:uppercase;}
+.btn-primary{background:var(--bg3);color:var(--accent);border:1px solid var(--accent);}
+.btn-primary:hover{box-shadow:0 0 18px rgba(0,200,240,.3);transform:translateY(-1px);}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+.btn-sm{padding:5px 10px;font-size:.68rem;background:var(--bg3);border:1px solid var(--border2);color:var(--text-dim);}
+.btn-sm:hover{border-color:var(--accent);color:var(--accent);}
+.btn-green{background:var(--bg3);color:var(--accent2);border:1px solid var(--accent2);font-size:.72rem;padding:6px 11px;}
+.btn-green:hover{box-shadow:0 0 15px rgba(0,240,144,.3);transform:translateY(-1px);}
+.btn-orange{background:var(--bg3);color:var(--accent3);border:1px solid var(--accent3);font-size:.72rem;padding:6px 11px;}
+.btn-orange:hover{box-shadow:0 0 15px rgba(255,112,67,.3);transform:translateY(-1px);}
+.btn-purple{background:var(--bg3);color:var(--purple);border:1px solid var(--purple);font-size:.72rem;padding:6px 11px;}
+.btn-purple:hover{box-shadow:0 0 15px rgba(168,85,247,.3);transform:translateY(-1px);}
+
+/* ── PROJECT BAR ──────────────────────────────────────────────────────── */
+.project-bar{
+  display:flex;align-items:center;gap:10px;
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:10px;padding:9px 14px;margin-bottom:13px;
+}
+.project-bar label{font-family:'JetBrains Mono',monospace;font-size:.66rem;color:var(--text-dim);white-space:nowrap;}
+.project-bar input{flex:1;background:transparent;border:none;outline:none;
+  font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;
+  color:var(--text-hi);min-width:0;}
+.project-bar input::placeholder{color:var(--text-dim);}
+
+/* ── TABS ─────────────────────────────────────────────────────────────── */
+.tabs{display:flex;gap:3px;margin-bottom:14px;
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:11px;padding:4px;overflow-x:auto;scroll-snap-type:x mandatory;}
+.tabs::-webkit-scrollbar{height:2px;}
+.tabs::-webkit-scrollbar-thumb{background:var(--border2);}
+.tab{flex:1;min-width:80px;padding:8px 10px;border:none;border-radius:8px;
+  background:transparent;color:var(--text-dim);
+  font-family:'Syne',sans-serif;font-size:.74rem;font-weight:700;
+  cursor:pointer;transition:all .2s;display:flex;align-items:center;
+  justify-content:center;gap:5px;white-space:nowrap;scroll-snap-align:start;}
+.tab:hover{color:var(--text);background:var(--bg3);}
+.tab.active{background:var(--bg3);color:var(--accent);border:1px solid var(--border2);
+  box-shadow:0 0 14px rgba(0,200,240,.18);}
+
+/* ── WORKSPACE ────────────────────────────────────────────────────────── */
+.workspace{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start;}
+@media(max-width:800px){.workspace{grid-template-columns:1fr;}}
+
+/* ── PANELS ───────────────────────────────────────────────────────────── */
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:var(--shadow);}
+.panel-hdr{padding:10px 13px;background:var(--bg3);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+.panel-title{font-family:'JetBrains Mono',monospace;font-size:.66rem;color:var(--accent);letter-spacing:1.5px;text-transform:uppercase;}
+.panel-body{padding:13px;}
+
+/* ── INPUT ────────────────────────────────────────────────────────────── */
+.input-group{display:flex;flex-direction:column;gap:8px;}
+textarea{width:100%;min-height:80px;background:var(--input-bg);border:1px solid var(--border);
+  border-radius:8px;color:var(--text-hi);font-family:'JetBrains Mono',monospace;
+  font-size:.84rem;padding:10px;resize:vertical;line-height:1.65;transition:all .2s;}
+textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(0,200,240,.1);}
+textarea::placeholder{color:var(--text-dim);}
+.chat-input-row{display:flex;gap:7px;margin-top:8px;align-items:flex-end;}
+.chat-input-row textarea{min-height:52px;flex:1;}
+
+/* ── VOICE ────────────────────────────────────────────────────────────── */
+.voice-btn{width:36px;height:36px;border-radius:50%;border:1.5px solid var(--border2);
+  background:var(--bg3);color:var(--text-dim);font-size:.95rem;
+  cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.voice-btn:hover{border-color:var(--accent2);color:var(--accent2);}
+.voice-btn.recording{border-color:#ff4444;color:#ff4444;background:rgba(255,68,68,.1);
+  animation:rec-pulse 1s ease-in-out infinite;}
+@keyframes rec-pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,68,68,.4);}50%{box-shadow:0 0 0 7px rgba(255,68,68,0);}}
+
+/* ── CHAT ─────────────────────────────────────────────────────────────── */
+.chat-area{display:flex;flex-direction:column;gap:8px;max-height:420px;overflow-y:auto;
+  padding:10px;background:var(--input-bg);border:1px solid var(--border);
+  border-radius:8px;scroll-behavior:smooth;}
+.chat-area::-webkit-scrollbar{width:3px;}
+.chat-area::-webkit-scrollbar-thumb{background:var(--border2);}
+.msg{padding:8px 12px;border-radius:8px;font-size:.84rem;line-height:1.6;}
+.msg.user{align-self:flex-end;background:var(--chat-user);
+  border:1px solid var(--border2);color:var(--text-hi);border-bottom-right-radius:3px;max-width:88%;}
+.msg.assistant{align-self:flex-start;background:var(--chat-asst);
+  border:1px solid var(--border);color:var(--text);border-bottom-left-radius:3px;max-width:100%;}
+.msg.assistant h1,.msg.assistant h2,.msg.assistant h3{color:var(--accent);margin:7px 0 4px;font-size:.95em;}
+.msg.assistant strong{color:var(--accent2);}
+.msg.assistant code{background:var(--bg);border:1px solid var(--border);padding:1px 5px;
+  border-radius:3px;font-family:'JetBrains Mono',monospace;font-size:.8em;color:var(--accent3);}
+.msg.assistant pre{background:var(--bg);border:1px solid var(--border);border-radius:6px;
+  padding:10px;overflow-x:auto;margin:7px 0;}
+.msg.assistant pre code{background:none;border:none;padding:0;color:var(--accent2);font-size:.82rem;}
+.msg.assistant ul,.msg.assistant ol{padding-left:16px;margin:5px 0;}
+.msg.assistant p{margin:4px 0;}
+.msg.assistant table{width:100%;border-collapse:collapse;font-size:.8rem;margin:7px 0;}
+.msg.assistant th{background:var(--bg3);color:var(--accent);padding:5px 8px;border:1px solid var(--border);}
+.msg.assistant td{padding:4px 8px;border:1px solid var(--border);}
+
+/* ── CHIPS ────────────────────────────────────────────────────────────── */
+.examples{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;}
+.chip{padding:3px 9px;background:var(--bg3);border:1px solid var(--border);
+  border-radius:20px;font-size:.68rem;color:var(--text-dim);
+  cursor:pointer;transition:all .15s;font-family:'JetBrains Mono',monospace;}
+.chip:hover{border-color:var(--accent);color:var(--accent);background:var(--bg2);}
+
+/* ── LOADING ──────────────────────────────────────────────────────────── */
+.loading{display:none;align-items:center;gap:8px;color:var(--accent);
+  font-family:'JetBrains Mono',monospace;font-size:.76rem;padding:10px 0;}
+.loading.visible{display:flex;}
+.spinner{width:15px;height:15px;border:2px solid var(--border);
+  border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ── OUTPUTS ──────────────────────────────────────────────────────────── */
+.schematic-img{width:100%;border-radius:8px;border:1px solid var(--border);}
+.placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:160px;color:var(--text-dim);gap:8px;text-align:center;}
+.placeholder-icon{font-size:2rem;opacity:.28;}
+.placeholder p{font-size:.76rem;}
+.error-msg{color:#ff6b6b;background:rgba(255,107,107,.07);border:1px solid rgba(255,107,107,.25);
+  border-radius:6px;padding:7px 11px;font-size:.76rem;font-family:'JetBrains Mono',monospace;margin-top:6px;}
+
+/* ── SIM ──────────────────────────────────────────────────────────────── */
+.sim-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:10px;}
+@media(max-width:580px){.sim-grid{grid-template-columns:1fr;}}
+.sim-card{background:var(--input-bg);border:1px solid var(--border);border-radius:8px;padding:10px;}
+.sim-card h4{font-family:'JetBrains Mono',monospace;font-size:.66rem;color:var(--accent);
+  letter-spacing:1px;text-transform:uppercase;margin-bottom:7px;}
+.node-row{display:flex;justify-content:space-between;align-items:center;
+  padding:4px 0;border-bottom:1px solid var(--border);font-size:.8rem;}
+.node-row:last-child{border-bottom:none;}
+.node-name{color:var(--text-dim);font-family:'JetBrains Mono',monospace;font-size:.76rem;}
+.node-val{color:var(--accent2);font-weight:700;font-family:'JetBrains Mono',monospace;}
+.power-bar-wrap{margin:3px 0;}
+.power-bar-label{display:flex;justify-content:space-between;font-size:.74rem;margin-bottom:2px;}
+.power-bar{height:5px;background:var(--border);border-radius:3px;overflow:hidden;}
+.power-bar-fill{height:100%;border-radius:3px;transition:width .8s ease;}
+.sim-summary{background:var(--bg2);border:1px solid var(--border2);border-radius:8px;
+  padding:11px 13px;font-size:.84rem;line-height:1.6;margin-bottom:11px;}
+.sim-warning{display:flex;gap:8px;background:rgba(255,179,0,.06);
+  border:1px solid rgba(255,179,0,.22);border-radius:7px;
+  padding:8px 11px;font-size:.8rem;margin-bottom:5px;color:var(--warn);}
+
+/* ── CANVAS ───────────────────────────────────────────────────────────── */
+.anim-wrap{border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:11px;background:var(--input-bg);}
+#flowCanvas{display:block;width:100%;}
+#waveCanvas{display:block;width:100%;}
+
+/* ── FALSTAD ──────────────────────────────────────────────────────────── */
+.falstad-wrap{margin-top:10px;}
+.falstad-wrap iframe{width:100%;height:320px;border:1px solid var(--border);border-radius:8px;}
+.falstad-link{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;margin-bottom:7px;
+  background:var(--bg3);border:1px solid var(--accent);border-radius:7px;
+  color:var(--accent);font-size:.75rem;font-weight:700;text-decoration:none;transition:all .2s;}
+.falstad-link:hover{box-shadow:0 0 16px rgba(0,200,240,.3);transform:translateY(-1px);}
+
+/* ── BOM ──────────────────────────────────────────────────────────────── */
+.bom-table{width:100%;border-collapse:collapse;font-size:.78rem;}
+.bom-table th{background:var(--bg3);color:var(--accent);padding:6px 9px;
+  border:1px solid var(--border);text-align:left;font-family:'JetBrains Mono',monospace;
+  font-size:.66rem;letter-spacing:1px;text-transform:uppercase;}
+.bom-table td{padding:5px 9px;border:1px solid var(--border);vertical-align:top;}
+.bom-table tr:nth-child(even) td{background:var(--bg2);}
+.bom-table td a{color:var(--accent);text-decoration:none;font-size:.74rem;}
+.bom-table td a:hover{text-decoration:underline;}
+.bom-meta{display:flex;gap:14px;flex-wrap:wrap;margin-top:9px;font-size:.78rem;}
+.bom-meta span{color:var(--text-dim);}
+.bom-meta strong{color:var(--accent2);}
+
+/* ── QUIZ ─────────────────────────────────────────────────────────────── */
+.quiz-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:20px;box-shadow:var(--shadow);}
+.quiz-q{font-size:1.05rem;font-weight:700;color:var(--text-hi);margin-bottom:16px;line-height:1.5;}
+.quiz-options{display:flex;flex-direction:column;gap:8px;}
+.quiz-opt{
+  padding:11px 15px;border-radius:8px;border:1px solid var(--border2);
+  background:var(--bg3);color:var(--text);font-size:.88rem;
+  cursor:pointer;transition:all .2s;text-align:left;font-family:'Syne',sans-serif;
+}
+.quiz-opt:hover:not(:disabled){border-color:var(--accent);color:var(--accent);background:var(--bg2);}
+.quiz-opt.correct{border-color:var(--accent2);color:var(--accent2);background:rgba(0,240,144,.08);}
+.quiz-opt.wrong{border-color:#ff6b6b;color:#ff6b6b;background:rgba(255,107,107,.08);}
+.quiz-opt:disabled{cursor:default;}
+.quiz-explain{margin-top:14px;padding:12px;background:var(--bg2);border:1px solid var(--border);
+  border-radius:8px;font-size:.84rem;line-height:1.6;color:var(--text);}
+.quiz-explain strong{color:var(--accent2);}
+.quiz-meta{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;}
+.quiz-score{font-family:'JetBrains Mono',monospace;font-size:.8rem;color:var(--accent);}
+.quiz-level{display:flex;gap:6px;}
+.level-btn{padding:4px 10px;border-radius:5px;border:1px solid var(--border);
+  background:var(--bg3);color:var(--text-dim);font-size:.7rem;cursor:pointer;font-family:'Syne',sans-serif;}
+.level-btn.active{border-color:var(--accent);color:var(--accent);background:var(--bg2);}
+.quiz-progress{height:4px;background:var(--border);border-radius:2px;margin-bottom:14px;overflow:hidden;}
+.quiz-progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:2px;transition:width .4s;}
+
+/* ── WAVEFORM ─────────────────────────────────────────────────────────── */
+.wave-controls{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;align-items:center;}
+.wave-controls label{font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--text-dim);}
+.wave-controls input[type=range]{width:100px;accent-color:var(--accent);}
+.wave-controls select{background:var(--bg3);border:1px solid var(--border);color:var(--text);
+  padding:4px 8px;border-radius:6px;font-size:.76rem;font-family:'JetBrains Mono',monospace;}
+.wave-stat{font-family:'JetBrains Mono',monospace;font-size:.72rem;
+  background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:3px 8px;color:var(--accent2);}
+
+/* ── SAVED ────────────────────────────────────────────────────────────── */
+.saved-list{display:flex;flex-direction:column;gap:6px;}
+.saved-item{display:flex;align-items:center;justify-content:space-between;
+  background:var(--bg3);border:1px solid var(--border);border-radius:8px;
+  padding:9px 12px;gap:8px;}
+.saved-item-info{flex:1;min-width:0;}
+.saved-item-name{font-weight:700;color:var(--text-hi);font-size:.84rem;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.saved-item-time{font-family:'JetBrains Mono',monospace;font-size:.66rem;color:var(--text-dim);}
+
+/* ── LEARN ────────────────────────────────────────────────────────────── */
+.learn-output{font-size:.88rem;line-height:1.75;}
+.learn-output h2{color:var(--accent2);font-size:.95rem;margin:13px 0 5px;
+  border-bottom:1px solid var(--border);padding-bottom:3px;}
+.learn-output h3{color:var(--accent);font-size:.88rem;margin:9px 0 4px;}
+.learn-output strong{color:var(--accent2);}
+.learn-output code{background:var(--bg);border:1px solid var(--border);padding:1px 5px;
+  border-radius:3px;font-family:'JetBrains Mono',monospace;font-size:.8em;color:var(--accent3);}
+.learn-output pre{background:var(--bg);border:1px solid var(--border);
+  border-radius:6px;padding:10px;overflow-x:auto;margin:7px 0;}
+.learn-output pre code{background:none;border:none;padding:0;color:var(--accent2);}
+.learn-output ul,.learn-output ol{padding-left:18px;margin:5px 0;}
+.learn-output p{margin:5px 0;}
+
+/* ── META TAGS ────────────────────────────────────────────────────────── */
+.meta-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px;}
+.meta-tag{padding:2px 8px;border-radius:4px;font-size:.68rem;font-family:'JetBrains Mono',monospace;}
+.badge{display:inline-block;padding:2px 7px;border-radius:4px;font-size:.64rem;
+  font-family:'JetBrains Mono',monospace;font-weight:600;}
+.badge-ok{background:rgba(0,240,144,.1);color:var(--accent2);border:1px solid rgba(0,240,144,.25);}
+.badge-warn{background:rgba(255,179,0,.1);color:var(--warn);border:1px solid rgba(255,179,0,.25);}
+.badge-info{background:rgba(0,200,240,.1);color:var(--accent);border:1px solid rgba(0,200,240,.25);}
+
+.slabel{font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--text-dim);
+  text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;}
+.divider{height:1px;background:var(--border);margin:11px 0;}
+.tab-content{display:none;}
+.tab-content.active{display:block;}
+
+footer{text-align:center;padding:18px 0 10px;color:var(--text-dim);font-size:.66rem;
+  font-family:'JetBrains Mono',monospace;border-top:1px solid var(--border);margin-top:24px;}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-badge">⚡</div>
+    <div class="logo-info">
+      <h1>Circuit Copilot</h1>
+      <p>v4 · AI Design Assistant</p>
+    </div>
+  </div>
+  <div class="hdr-right">
+    <div class="status-dot"></div>
+    <span class="status-txt" id="status-txt">ONLINE · llama-3.3-70b</span>
+    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+      <div class="theme-icons"><span>🌙</span><span>☀️</span></div>
+    </button>
+    <button class="btn btn-sm" style="font-size:.66rem" onclick="saveCircuit()">💾 Save</button>
+    <button class="btn btn-orange" onclick="exportPDF()">📄 PDF</button>
+  </div>
+</header>
+
+<!-- PROJECT BAR -->
+<div class="project-bar">
+  <label>PROJECT:</label>
+  <input type="text" id="project-name" placeholder="Untitled Circuit — click to rename"/>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab active"  onclick="switchTab('schematic',this)"><span>🔌</span>Schematic</button>
+  <button class="tab"         onclick="switchTab('simulate',this)"><span>📊</span>Simulate</button>
+  <button class="tab"         onclick="switchTab('waveform',this)"><span>〰️</span>Waveform</button>
+  <button class="tab"         onclick="switchTab('bom',this)"><span>🧾</span>BOM</button>
+  <button class="tab"         onclick="switchTab('components',this)"><span>🧩</span>Parts</button>
+  <button class="tab"         onclick="switchTab('debug',this)"><span>🔍</span>Debug</button>
+  <button class="tab"         onclick="switchTab('arduino',this)"><span>💻</span>Arduino</button>
+  <button class="tab"         onclick="switchTab('learn',this)"><span>📚</span>Learn</button>
+  <button class="tab"         onclick="switchTab('quiz',this)"><span>🎯</span>Quiz</button>
+  <button class="tab"         onclick="switchTab('saved',this)"><span>🗂️</span>Saved</button>
+</div>
+
+<!-- ═══ SCHEMATIC ═══════════════════════════════════════════════════════ -->
+<div id="tab-schematic" class="tab-content active">
+  <div class="workspace">
+    <div class="panel">
+      <div class="panel-hdr"><span class="panel-title">// DESCRIBE CIRCUIT</span></div>
+      <div class="panel-body">
+        <div class="slabel">Describe in English — press 🎤 to speak:</div>
+        <div class="chat-area" id="sch-chat"></div>
+        <div class="chat-input-row">
+          <textarea id="sch-input" placeholder="e.g. LED circuit with 220Ω resistor and 9V battery"></textarea>
+          <button class="voice-btn" id="sch-voice" onclick="toggleVoice('sch-input','sch-voice')">🎤</button>
+          <button class="btn btn-primary" id="sch-btn" onclick="runSchematic()">⚡</button>
+        </div>
+        <div class="examples">
+          <span class="chip" onclick="qs('sch','LED with 220Ω resistor and 9V battery')">LED circuit</span>
+          <span class="chip" onclick="qs('sch','LED with button switch and 5V')">+ Button</span>
+          <span class="chip" onclick="qs('sch','NPN transistor switching a 12V relay')">Transistor relay</span>
+          <span class="chip" onclick="qs('sch','Voltage divider 10kΩ and 4.7kΩ')">Voltage divider</span>
+        </div>
+        <div class="loading" id="sch-loading"><div class="spinner"></div>Generating...</div>
+        <div id="sch-error"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-hdr">
+        <span class="panel-title">// SCHEMATIC OUTPUT</span>
+        <button class="btn btn-sm" id="sch-dl" style="display:none" onclick="dlSchematic()">↓ PNG</button>
+      </div>
+      <div class="panel-body">
+        <div id="sch-ph" class="placeholder"><div class="placeholder-icon">📐</div><p>Schematic renders here</p></div>
+        <img id="sch-img" class="schematic-img" style="display:none"/>
+        <div id="sch-meta" class="meta-tags" style="display:none"></div>
+        <div id="sch-desc" style="margin-top:8px;font-size:.8rem;color:var(--text-dim);display:none;line-height:1.6;"></div>
+        <div id="falstad-wrap" style="display:none" class="falstad-wrap">
+          <div class="divider"></div>
+          <div class="slabel">🔗 Falstad Interactive Simulator</div>
+          <a id="falstad-link" class="falstad-link" href="#" target="_blank">↗ Open in Falstad</a>
+          <iframe id="falstad-frame" src="" scrolling="no" title="Falstad"></iframe>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SIMULATE ════════════════════════════════════════════════════════ -->
+<div id="tab-simulate" class="tab-content">
+  <div class="workspace">
+    <div class="panel">
+      <div class="panel-hdr"><span class="panel-title">// DC SIMULATION</span></div>
+      <div class="panel-body">
+        <div class="chat-area" id="sim-chat"></div>
+        <div class="chat-input-row">
+          <textarea id="sim-input" placeholder="e.g. 9V battery, 220Ω resistor, red LED in series"></textarea>
+          <button class="voice-btn" id="sim-voice" onclick="toggleVoice('sim-input','sim-voice')">🎤</button>
+          <button class="btn btn-primary" id="sim-btn" onclick="runSimulate()">▶</button>
+        </div>
+        <div class="examples">
+          <span class="chip" onclick="qs('sim','9V battery, 220Ω resistor, red LED')">LED circuit</span>
+          <span class="chip" onclick="qs('sim','5V supply, 10kΩ and 4.7kΩ voltage divider')">Divider</span>
+          <span class="chip" onclick="qs('sim','12V, 1kΩ base resistor, BC547, 470Ω load')">Transistor</span>
+        </div>
+        <div class="loading" id="sim-loading"><div class="spinner"></div>Running DC analysis...</div>
+        <div id="sim-error"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-hdr"><span class="panel-title">// RESULTS</span></div>
+      <div class="panel-body">
+        <div id="sim-ph" class="placeholder"><div class="placeholder-icon">📊</div><p>Results appear here</p></div>
+        <div id="sim-out" style="display:none">
+          <div class="slabel">⚡ Current Flow</div>
+          <div class="anim-wrap"><canvas id="flowCanvas" height="90"></canvas></div>
+          <div id="sim-summary" class="sim-summary"></div>
+          <div class="sim-grid">
+            <div class="sim-card"><h4>Node Voltages</h4><div id="sim-nodes"></div></div>
+            <div class="sim-card"><h4>Power (mW)</h4><div id="sim-power"></div></div>
+          </div>
+          <div class="sim-card" style="margin-bottom:10px;"><h4>Currents</h4><div id="sim-branches"></div></div>
+          <div id="sim-warns"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ WAVEFORM ═════════════════════════════════════════════════════════ -->
+<div id="tab-waveform" class="tab-content">
+  <div class="workspace">
+    <div class="panel">
+      <div class="panel-hdr"><span class="panel-title">// WAVEFORM GENERATOR</span></div>
+      <div class="panel-body">
+        <div class="slabel">Configure your AC/signal waveform:</div>
+        <div class="wave-controls">
+          <label>Type:</label>
+          <select id="w-type" onchange="drawWave()">
+            <option value="sine">Sine</option>
+            <option value="square">Square</option>
+            <option value="triangle">Triangle</option>
+            <option value="sawtooth">Sawtooth</option>
+            <option value="pwm">PWM</option>
+          </select>
+          <label>Freq:</label>
+          <input type="range" id="w-freq" min="1" max="200" value="50" oninput="updateWaveLabel();drawWave()"/>
+          <span class="wave-stat" id="w-freq-lbl">50 Hz</span>
+          <label>Amp:</label>
+          <input type="range" id="w-amp" min="1" max="24" value="5" oninput="updateWaveLabel();drawWave()"/>
+          <span class="wave-stat" id="w-amp-lbl">5 V</span>
+          <label>DC Offset:</label>
+          <input type="range" id="w-offset" min="-12" max="12" value="0" oninput="updateWaveLabel();drawWave()"/>
+          <span class="wave-stat" id="w-offset-lbl">0 V</span>
+          <label>Duty:</label>
+          <input type="range" id="w-duty" min="5" max="95" value="50" oninput="updateWaveLabel();drawWave()"/>
+          <span class="wave-stat" id="w-duty-lbl">50 %</span>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+          <span class="wave-stat" id="w-period">Period: 20.0 ms</span>
+          <span class="wave-stat" id="w-vrms">Vrms: 3.54 V</span>
+          <span class="wave-stat" id="w-vpp">Vpp: 10.0 V</span>
+        </div>
+        <div class="slabel">Ask AI about this waveform:</div>
+        <div class="chat-input-row">
+          <textarea id="wave-input" placeholder="e.g. What happens if I apply this 50Hz signal to an RC low-pass filter?"></textarea>
+          <button class="voice-btn" onclick="toggleVoice('wave-input','wave-voice')" id="wave-voice">🎤</button>
+          <button class="btn btn-primary" id="wave-btn" onclick="runChat('components','wave','wave-output','wave-ph')">→</button>
+        </div>
+        <div class="loading" id="wave-loading"><div class="spinner"></div>Analyzing...</div>
+        <div id="wave-error"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-hdr"><span class="panel-title">// OSCILLOSCOPE</span></div>
+      <div class="panel-body">
+        <div class="slabel">Live waveform preview:</div>
+        <div class="anim-wrap" style="margin-bottom:12px;">
+          <canvas id="waveCanvas" height="200"></canvas>
+        </div>
+        <div id="wave-ph" class="placeholder" style="min-height:80px;"><div class="placeholder-icon">〰️</div><p>AI analysis appears here</p></div>
+        <div id="wave-output" class="msg assistant" style="display:none;max-width:100%;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ BOM ══════════════════════════════════════════════════════════════ -->
+<div id="tab-bom" class="tab-content">
+  <div class="workspace">
+    <div class="panel">
+      <div class="panel-hdr"><span class="panel-title">// BILL OF MATERIALS</span></div>
+      <div class="panel-body">
+        <div class="chat-area" id="bom-chat"></div>
+        <div class="chat-input-row">
+          <textarea id="bom-input" placeholder="e.g. LED blinker with 555 timer, 9V battery, breadboard"></textarea>
+          <button class="voice-btn" onclick="toggleVoice('bom-input','bom-voice')" id="bom-voice">🎤</button>
+          <button class="btn btn-primary" id="bom-btn" onclick="runBOM()">🧾</button>
+        </div>
+        <div class="examples">
+          <span class="chip" onclick="qs('bom','555 timer LED blinker on breadboard')">555 blinker</span>
+          <span class="chip" onclick="qs('bom','Arduino Uno, DHT11 sensor, 16x2 LCD display')">Temp monitor</span>
+          <span class="chip" onclick="qs('bom','Simple LED circuit 9V battery 220 ohm resistor')">Basic LED</span>
+        </div>
+        <div class="loading" id="bom-loading"><div class="spinner"></div>Generating BOM...</div>
+        <div id="bom-error"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-hdr">
+        <span class="panel-title">// PARTS LIST</span>
+        <button class="btn btn-green" id="bom-dl" style="display:none" onclick="dlBOM()">↓ CSV</button>
+      </div>
+      <div class="panel-body">
+        <div id="bom-ph" class="placeholder"><div class="placeholder-icon">🧾</div><p>Parts list with pricing</p></div>
+        <div id="bom-out" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ COMPONENTS ═══════════════════════════════════════════════════════ -->
+<div id="tab-components" class="tab-content">
+  <div class="workspace">
+    <div class="panel">
+      <div class="panel-hdr"><span class="panel-title">// COMPONENT ADVISOR</span></div>
+      <div class="panel-body">
+        <div class="chat-area" id="comp-chat"></div>
+        <div class="chat-input-row">
+          <textarea id="comp-input" placeholder="e.g. What resistor for a red LED on 5V?"></textarea>
+          <button class="voice-btn" onclick="toggleVoice('comp-input','comp-voice')" id="comp-voice">🎤</button>
+          <button class="btn btn-primary" id="comp-btn" onclick="runChat('components','comp','comp-out','comp-ph')">→</button>
+        </div>
+        <div class="examples">
+          <span class="chip" onclick="qs('comp','Resistor for red LED on 5V')">LED resistor</span>
+          <span class="chip" onclick="qs('comp','Best capacitor for 100Hz power supply filter')">Filter cap</span>
+          <span class="chip" onclick="qs('comp','NPN transistor for 500mA load switching')">NPN switch</span>
+        </div>
+        <div class="loading" id="comp-loading"><div class="spinner"></div>Finding parts...</div>
+        <div id="comp-error"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-hdr"><span class="panel-title">// RECOMMENDATIONS</span></div>
+      <div class="panel-body">
+        <div id="comp-ph" class="placeholder"><div class="placeholder-icon">🧩</div><p>Recommendations here</p></div>
+        <div id="comp-out" class="msg assistant" style="display:none;max-width:100%;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ DEBUG ════════════════════════════════════════════════════════════ -->
+<div id="tab-debug" class="tab-content">
+  <div class="workspace">
+    <div class="panel">
+      <div class="panel-hdr"><span class="panel-title">// CIRCUIT DEBUGGER</span></div>
+      <div class="panel-body">
+        <div class="chat-area" id="debug-chat"></div>
+        <div class="chat-input-row">
+          <textarea id="debug-input" placeholder="e.g. My LED burned out when I used 9V directly"></textarea>
+          <button class="voice-btn" onclick="toggleVoice('debug-input','debug-voice')" id="debug-voice">🎤</button>
+          <button class="btn btn-primary" id="debug-btn" onclick="runChat('debug','debug','debug-out','debug-ph')">→</button>
+        </div>
+        <div class="examples">
+          <span class="chip" onclick="qs('debug','Connected 9V directly to LED, it burned')">LED burned</span>
+          <span class="chip" onclick="qs('debug','Arduino resets when I run a motor on pin 9')">Arduino resets</span>
+          <span class="chip" onclick="qs('debug','7805 voltage regulator gets extremely hot')">Hot regulator</span>
+        </div>
+        <div class="loading" id="debug-loading"><div class="spinner"></div>Diagnosing...</div>
+        <div id="debug-error"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-hdr"><span class="panel-title">// DIAGNOSIS</span></div>
+      <div class="panel-body">
+        <div id="debug-ph" class="placeholder"><div class="placeholder-icon">🔍</div><p>Diagnosis here</p></div>
+        <div id="debug-out" class="msg assistant" style="display:none;max-width:100%;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ARDUINO ══════════════════════════════════════════════════════════ -->
+<div id="tab-arduino" class="tab-content">
+  <div class="workspace">
+    <div class="panel">
+      <div class="panel-hdr"><span class="panel-title">// CODE GENERATOR</span></div>
+      <div class="panel-body">
+        <div class="chat-area" id="ard-chat"></div>
+        <div class="chat-input-row">
+          <textarea id="ard-input" placeholder="e.g. Blink LED on pin 13 every 500ms, faster when button pressed"></textarea>
+          <button class="voice-btn" onclick="toggleVoice('ard-input','ard-voice')" id="ard-voice">🎤</button>
+          <button class="btn btn-primary" id="ard-btn" onclick="runChat('arduino','ard','ard-out','ard-ph')">→</button>
+        </div>
+        <div class="examples">
+          <span class="chip" onclick="qs('ard','Blink LED on pin 13 every 500ms')">LED blink</span>
+          <span class="chip" onclick="qs('ard','Read DHT11 temp and humidity, print to serial')">DHT11</span>
+          <span class="chip" onclick="qs('ard','HC-SR04 ultrasonic sensor, buzzer alert under 20cm')">Ultrasonic</span>
+          <span class="chip" onclick="qs('ard','Servo sweep 0-180 when button pressed')">Servo</span>
+        </div>
+        <div class="loading" id="ard-loading"><div class="spinner"></div>Writing code...</div>
+        <div id="ard-error"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-hdr">
+        <span class="panel-title">// GENERATED CODE</span>
+        <button class="btn btn-green" id="ard-dl" style="display:none" onclick="dlArduino()">↓ .ino</button>
+      </div>
+      <div class="panel-body">
+        <div id="ard-ph" class="placeholder"><div class="placeholder-icon">💻</div><p>Code appears here</p></div>
+        <div id="ard-out" class="msg assistant" style="display:none;max-width:100%;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ LEARN ════════════════════════════════════════════════════════════ -->
+<div id="tab-learn" class="tab-content">
+  <div class="workspace">
+    <div class="panel">
+      <div class="panel-hdr"><span class="panel-title">// LEARN ELECTRONICS</span></div>
+      <div class="panel-body">
+        <div class="chat-area" id="learn-chat"></div>
+        <div class="chat-input-row">
+          <textarea id="learn-input" placeholder="e.g. How does a capacitor work?"></textarea>
+          <button class="voice-btn" onclick="toggleVoice('learn-input','learn-voice')" id="learn-voice">🎤</button>
+          <button class="btn btn-purple" id="learn-btn" onclick="runChat('learn','learn','learn-out','learn-ph')">📚</button>
+        </div>
+        <div class="examples">
+          <span class="chip" onclick="qs('learn','How does a capacitor work?')">Capacitors</span>
+          <span class="chip" onclick="qs('learn','Explain Ohms Law with examples')">Ohm's Law</span>
+          <span class="chip" onclick="qs('learn','What is PWM?')">PWM</span>
+          <span class="chip" onclick="qs('learn','Why does a transistor act like a switch?')">Transistors</span>
+          <span class="chip" onclick="qs('learn','Difference between AC and DC?')">AC vs DC</span>
+        </div>
+        <div class="loading" id="learn-loading"><div class="spinner"></div>Explaining...</div>
+        <div id="learn-error"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-hdr"><span class="panel-title">// EXPLANATION</span></div>
+      <div class="panel-body">
+        <div id="learn-ph" class="placeholder"><div class="placeholder-icon">📚</div><p>Explanations here</p></div>
+        <div id="learn-out" class="learn-output" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ QUIZ ══════════════════════════════════════════════════════════════ -->
+<div id="tab-quiz" class="tab-content">
+  <div class="workspace">
+    <div class="panel">
+      <div class="panel-hdr"><span class="panel-title">// CIRCUIT QUIZ</span></div>
+      <div class="panel-body">
+        <div class="quiz-meta">
+          <span class="quiz-score" id="quiz-score">Score: 0 / 0</span>
+          <div class="quiz-level">
+            <button class="level-btn active" onclick="setLevel('beginner',this)">Beginner</button>
+            <button class="level-btn" onclick="setLevel('intermediate',this)">Intermediate</button>
+            <button class="level-btn" onclick="setLevel('advanced',this)">Advanced</button>
+          </div>
+          <button class="btn btn-sm" onclick="loadQuiz()">↺ New Question</button>
+        </div>
+        <div class="quiz-progress"><div class="quiz-progress-fill" id="quiz-prog" style="width:0%"></div></div>
+        <div id="quiz-area">
+          <div class="placeholder"><div class="placeholder-icon">🎯</div><p>Click "New Question" to start the quiz!</p></div>
+        </div>
+        <div class="loading" id="quiz-loading" style="margin-top:8px;"><div class="spinner"></div>Loading question...</div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-hdr"><span class="panel-title">// YOUR STATS</span></div>
+      <div class="panel-body">
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div class="sim-card">
+            <h4>Session Stats</h4>
+            <div class="node-row"><span class="node-name">Questions answered</span><span class="node-val" id="stat-total">0</span></div>
+            <div class="node-row"><span class="node-name">Correct</span><span class="node-val" style="color:var(--accent2)" id="stat-correct">0</span></div>
+            <div class="node-row"><span class="node-name">Accuracy</span><span class="node-val" id="stat-acc">—</span></div>
+            <div class="node-row"><span class="node-name">Current streak</span><span class="node-val" style="color:var(--warn)" id="stat-streak">0 🔥</span></div>
+          </div>
+          <div class="sim-card">
+            <h4>Topic History</h4>
+            <div id="quiz-history" style="font-size:.76rem;color:var(--text-dim);line-height:1.8;font-family:'JetBrains Mono',monospace;">
+              No questions yet.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SAVED ═════════════════════════════════════════════════════════════ -->
+<div id="tab-saved" class="tab-content">
+  <div class="workspace">
+    <div class="panel">
+      <div class="panel-hdr">
+        <span class="panel-title">// SAVED CIRCUITS</span>
+        <button class="btn btn-sm" onclick="loadSavedList()">↺ Refresh</button>
+      </div>
+      <div class="panel-body">
+        <p style="font-size:.76rem;color:var(--text-dim);margin-bottom:11px;">Saved for this session. Export PDF for permanent records.</p>
+        <div id="saved-list" class="saved-list">
+          <div class="placeholder"><div class="placeholder-icon">🗂️</div><p>No circuits saved yet</p></div>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-hdr"><span class="panel-title">// LOADED CIRCUIT</span></div>
+      <div class="panel-body">
+        <div id="loaded-ph" class="placeholder"><div class="placeholder-icon">📂</div><p>Select a circuit to load</p></div>
+        <div id="loaded-out" style="display:none">
+          <img id="loaded-img" class="schematic-img" style="margin-bottom:9px;"/>
+          <div id="loaded-desc" style="font-size:.8rem;color:var(--text-dim);line-height:1.6;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>CIRCUIT COPILOT v4 · Groq LLaMA 3.3 70B · FastAPI · HuggingFace Spaces · Free & Open Source</footer>
+</div><!-- .app -->
+
+<script>
+// ── STATE ──────────────────────────────────────────────────────────────────
+const S = {
+  sch:{history:[],lastImage:null,lastSchema:null},
+  sim:{history:[],lastSim:null},
+  bom:{history:[],lastBom:null},
+  comp:{history:[]}, debug:{history:[]},
+  ard:{history:[],lastCode:''},
+  learn:{history:[]}, wave:{history:[]},
+};
+let pdfData={};
+
+// Quiz state
+let quiz = {score:0,total:0,streak:0,level:'beginner',history:[],current:null};
+
+// ── THEME ──────────────────────────────────────────────────────────────────
+function toggleTheme(){
+  const html=document.documentElement;
+  html.setAttribute('data-theme', html.getAttribute('data-theme')==='dark'?'light':'dark');
+  localStorage.setItem('theme', html.getAttribute('data-theme'));
+}
+(function(){const t=localStorage.getItem('theme');if(t) document.documentElement.setAttribute('data-theme',t);})();
+
+// ── TABS ───────────────────────────────────────────────────────────────────
+function switchTab(name,btn){
+  document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  btn.classList.add('active');
+  if(name==='saved') loadSavedList();
+  if(name==='waveform'){setTimeout(()=>{drawWave();},100);}
+}
+
+// ── HELPERS ────────────────────────────────────────────────────────────────
+const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function appendMsg(chatId,role,content){
+  const chat=document.getElementById(chatId);
+  if(!chat) return;
+  const d=document.createElement('div');
+  d.className=`msg ${role}`;
+  d.innerHTML=role==='assistant'?marked.parse(content):esc(content);
+  chat.appendChild(d);
+  chat.scrollTop=chat.scrollHeight;
+}
+function setLoading(p,on){
+  const b=document.getElementById(p+'-btn');if(b) b.disabled=on;
+  const l=document.getElementById(p+'-loading');if(l) l.classList.toggle('visible',on);
+}
+function showErr(p,msg){
+  const el=document.getElementById(p+'-error');
+  if(el) el.innerHTML=msg?`<div class="error-msg">⚠ ${msg}</div>`:'';
+}
+function qs(p,text){
+  const el=document.getElementById(p+'-input');if(!el) return;
+  el.value=text;
+  const dispatch={sch:runSchematic,sim:runSimulate,bom:runBOM};
+  if(dispatch[p]) dispatch[p]();
+  else{
+    const ep={comp:'components',debug:'debug',ard:'arduino',learn:'learn',wave:'components'}[p];
+    const outId={comp:'comp-out',debug:'debug-out',ard:'ard-out',learn:'learn-out',wave:'wave-output'}[p];
+    const phId={comp:'comp-ph',debug:'debug-ph',ard:'ard-ph',learn:'learn-ph',wave:'wave-ph'}[p];
+    if(ep) runChat(ep,p,outId,phId);
+  }
+}
+
+// ── VOICE ─────────────────────────────────────────────────────────────────
+let recog=null,activeInput=null;
+function toggleVoice(inputId,btnId){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){alert('Voice not supported. Use Chrome.');return;}
+  const btn=document.getElementById(btnId);
+  if(recog&&activeInput===inputId){recog.stop();return;}
+  recog=new SR(); recog.continuous=false; recog.interimResults=false; recog.lang='en-US';
+  activeInput=inputId; btn.classList.add('recording');
+  recog.onresult=e=>{
+    document.getElementById(inputId).value=e.results[0][0].transcript;
+    btn.classList.remove('recording');activeInput=null;
+  };
+  recog.onerror=recog.onend=()=>{btn.classList.remove('recording');activeInput=null;};
+  recog.start();
+}
+
+// ── SCHEMATIC ─────────────────────────────────────────────────────────────
+async function runSchematic(){
+  const input=document.getElementById('sch-input');
+  const prompt=input.value.trim();if(!prompt) return;
+  appendMsg('sch-chat','user',prompt);
+  S.sch.history.push({role:'user',content:prompt});
+  input.value='';setLoading('sch',true);showErr('sch','');
+  try{
+    const res=await fetch('/api/schematic',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({prompt,history:S.sch.history.slice(-10)})});
+    const data=await res.json();if(data.error) throw new Error(data.error);
+    S.sch.lastImage=data.image;S.sch.lastSchema=data.schema;
+    const img=document.getElementById('sch-img');
+    img.src='data:image/png;base64,'+data.image;img.style.display='block';
+    document.getElementById('sch-ph').style.display='none';
+    document.getElementById('sch-dl').style.display='inline-flex';
+    const meta=document.getElementById('sch-meta');meta.style.display='flex';meta.innerHTML='';
+    if(data.difficulty) meta.innerHTML+=`<span class="meta-tag badge-info">${data.difficulty}</span>`;
+    if(data.use_case) meta.innerHTML+=`<span class="meta-tag" style="font-size:.66rem;color:var(--text-dim);background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:2px 7px;">${data.use_case}</span>`;
+    const desc=document.getElementById('sch-desc');
+    if(data.description){desc.textContent='► '+data.description;desc.style.display='block';}
+    if(data.falstad_url){
+      document.getElementById('falstad-link').href=data.falstad_url;
+      document.getElementById('falstad-frame').src=data.falstad_url;
+      document.getElementById('falstad-wrap').style.display='block';
+    }
+    S.sch.history.push({role:'assistant',content:data.assistant_message||data.description});
+    appendMsg('sch-chat','assistant',data.description||'Schematic generated!');
+    pdfData.schematic_image=data.image;pdfData.schematic_description=data.description;
+    pdfData.components=data.schema?.components||[];
+    pdfData.project_name=document.getElementById('project-name').value||'Circuit Report';
+  }catch(e){showErr('sch',e.message);}
+  finally{setLoading('sch',false);}
+}
+document.getElementById('sch-input').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();runSchematic();}});
+
+// ── SIMULATE ──────────────────────────────────────────────────────────────
+async function runSimulate(){
+  const input=document.getElementById('sim-input');
+  const prompt=input.value.trim();if(!prompt) return;
+  appendMsg('sim-chat','user',prompt);
+  S.sim.history.push({role:'user',content:prompt});
+  input.value='';setLoading('sim',true);showErr('sim','');
+  try{
+    const res=await fetch('/api/simulate',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({prompt,history:S.sim.history.slice(-6)})});
+    const data=await res.json();if(data.error) throw new Error(data.error);
+    S.sim.lastSim=data.simulation;pdfData.simulation=data.simulation;
+    renderSim(data.simulation);
+    appendMsg('sim-chat','assistant',data.simulation.summary||'Done.');
+    S.sim.history.push({role:'assistant',content:data.simulation.summary});
+  }catch(e){showErr('sim',e.message);}
+  finally{setLoading('sim',false);}
+}
+document.getElementById('sim-input').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();runSimulate();}});
+
+function renderSim(sim){
+  document.getElementById('sim-ph').style.display='none';
+  document.getElementById('sim-out').style.display='block';
+  document.getElementById('sim-summary').textContent=sim.summary||'';
+  document.getElementById('sim-nodes').innerHTML=(sim.nodes||[]).map(n=>
+    `<div class="node-row"><span class="node-name">${n.name}</span><span class="node-val">${n.voltage} ${n.unit}</span></div>`
+  ).join('');
+  const maxP=Math.max(...(sim.power||[]).map(p=>p.power),1);
+  document.getElementById('sim-power').innerHTML=(sim.power||[]).map(p=>{
+    const pct=Math.min(100,(p.power/maxP)*100).toFixed(1);
+    const c=p.status==='OK'?'var(--accent2)':'var(--warn)';
+    return `<div class="power-bar-wrap">
+      <div class="power-bar-label">
+        <span style="font-size:.74rem">${p.component} <span class="badge ${p.status==='OK'?'badge-ok':'badge-warn'}">${p.status}</span></span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:.74rem;color:${c}">${p.power} ${p.unit}</span>
+      </div>
+      <div class="power-bar"><div class="power-bar-fill" style="width:${pct}%;background:${c}"></div></div>
+    </div>`;}).join('');
+  document.getElementById('sim-branches').innerHTML=(sim.branches||[]).map(b=>
+    `<div class="node-row"><span class="node-name">${b.name}</span><span class="node-val">${b.current} ${b.unit}</span></div>`
+  ).join('');
+  document.getElementById('sim-warns').innerHTML=(sim.warnings||[]).map(w=>
+    `<div class="sim-warning">⚠ ${w}</div>`).join('');
+  drawFlow(sim);
+}
+
+function drawFlow(sim){
+  const canvas=document.getElementById('flowCanvas');
+  const ctx=canvas.getContext('2d');
+  const W=canvas.offsetWidth||500;canvas.width=W;canvas.height=90;
+  const nodes=sim.nodes||[],branches=sim.branches||[];
+  const current=branches[0]?.current||0,maxV=sim.supply_voltage||9;
+  const numP=Math.min(22,Math.max(3,Math.round(current/4)));
+  let pts=Array.from({length:numP},(_,i)=>({x:(i/numP)*W,s:1.1+(current/60)}));
+  if(window._fAnim) cancelAnimationFrame(window._fAnim);
+  function draw(){
+    ctx.clearRect(0,0,W,90);
+    ctx.beginPath();ctx.moveTo(0,45);ctx.lineTo(W,45);ctx.strokeStyle='#1c3a5a';ctx.lineWidth=3;ctx.stroke();
+    nodes.forEach((n,i)=>{
+      const nx=(i/Math.max(nodes.length-1,1))*(W-40)+20;
+      ctx.beginPath();ctx.arc(nx,45,4.5,0,Math.PI*2);
+      ctx.fillStyle=`rgba(0,200,240,${.3+(n.voltage/(maxV||1))*.7})`;ctx.fill();
+      ctx.fillStyle='#4a8aaa';ctx.font='8px JetBrains Mono,monospace';
+      ctx.textAlign='center';ctx.fillText(`${n.voltage}${n.unit}`,nx,34);
+    });
+    pts.forEach(p=>{
+      const g=ctx.createRadialGradient(p.x,45,0,p.x,45,5);
+      g.addColorStop(0,'#00f090');g.addColorStop(1,'rgba(0,240,144,0)');
+      ctx.beginPath();ctx.arc(p.x,45,3.5,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();
+      p.x+=p.s;if(p.x>W) p.x=0;
+    });
+    if(current>0){
+      ctx.fillStyle='#00f090';ctx.font='bold 9px Syne,sans-serif';
+      ctx.textAlign='right';ctx.fillText(`I = ${current} ${branches[0]?.unit||'mA'}`,W-5,66);
+    }
+    window._fAnim=requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+// ── WAVEFORM ──────────────────────────────────────────────────────────────
+function updateWaveLabel(){
+  const f=+document.getElementById('w-freq').value;
+  const a=+document.getElementById('w-amp').value;
+  const o=+document.getElementById('w-offset').value;
+  const d=+document.getElementById('w-duty').value;
+  document.getElementById('w-freq-lbl').textContent=f+' Hz';
+  document.getElementById('w-amp-lbl').textContent=a+' V';
+  document.getElementById('w-offset-lbl').textContent=o+' V';
+  document.getElementById('w-duty-lbl').textContent=d+' %';
+  document.getElementById('w-period').textContent='Period: '+(1000/f).toFixed(1)+' ms';
+  const vrms = document.getElementById('w-type').value==='sine' ? (a/Math.sqrt(2)).toFixed(2) : a.toFixed(2);
+  document.getElementById('w-vrms').textContent='Vrms: '+vrms+' V';
+  document.getElementById('w-vpp').textContent='Vpp: '+(a*2).toFixed(1)+' V';
+}
+
+function drawWave(){
+  const canvas=document.getElementById('waveCanvas');
+  if(!canvas) return;
+  const ctx=canvas.getContext('2d');
+  const W=canvas.offsetWidth||500;canvas.width=W;canvas.height=200;
+  const type=document.getElementById('w-type').value;
+  const freq=+document.getElementById('w-freq').value;
+  const amp=+document.getElementById('w-amp').value;
+  const offset=+document.getElementById('w-offset').value;
+  const duty=(+document.getElementById('w-duty').value)/100;
+  const theme=document.documentElement.getAttribute('data-theme');
+  const bgColor=theme==='light'?'#ffffff':'#060a12';
+  const gridColor=theme==='light'?'rgba(0,0,0,.08)':'rgba(0,200,240,.06)';
+  const axisColor=theme==='light'?'rgba(0,0,0,.2)':'rgba(0,200,240,.2)';
+
+  ctx.fillStyle=bgColor;ctx.fillRect(0,0,W,200);
+
+  // Grid
+  ctx.strokeStyle=gridColor;ctx.lineWidth=1;
+  for(let x=0;x<W;x+=W/10){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,200);ctx.stroke();}
+  for(let y=0;y<200;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+
+  // Axes
+  ctx.strokeStyle=axisColor;ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(0,100);ctx.lineTo(W,100);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(0,200);ctx.stroke();
+
+  // Voltage labels
+  ctx.fillStyle='#4a8aaa';ctx.font='9px JetBrains Mono,monospace';ctx.textAlign='left';
+  ctx.fillText(`+${amp}V`,4,14);ctx.fillText('0V',4,103);ctx.fillText(`-${amp}V`,4,196);
+
+  // Waveform
+  const cycles=3;
+  const pxPerCycle=W/cycles;
+  ctx.strokeStyle='#00c8f0';ctx.lineWidth=2;
+  ctx.shadowColor='rgba(0,200,240,.5)';ctx.shadowBlur=6;
+  ctx.beginPath();
+  for(let x=0;x<W;x++){
+    const t=(x/pxPerCycle);
+    const phase=t%1;
+    let v=0;
+    if(type==='sine') v=Math.sin(phase*Math.PI*2)*amp;
+    else if(type==='square') v=(phase<duty?1:-1)*amp;
+    else if(type==='triangle') v=(phase<0.5?(4*phase-1):(3-4*phase))*amp;
+    else if(type==='sawtooth') v=(2*phase-1)*amp;
+    else if(type==='pwm') v=(phase<duty?1:-1)*amp;
+    const y=100-((v+offset)/(amp+Math.abs(offset)+0.001))*90;
+    x===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+  ctx.shadowBlur=0;
+  updateWaveLabel();
+}
+setTimeout(drawWave,200);
+window.addEventListener('resize',drawWave);
+
+// ── BOM ───────────────────────────────────────────────────────────────────
+async function runBOM(){
+  const input=document.getElementById('bom-input');
+  const prompt=input.value.trim();if(!prompt) return;
+  appendMsg('bom-chat','user',prompt);
+  S.bom.history.push({role:'user',content:prompt});
+  input.value='';setLoading('bom',true);showErr('bom','');
+  try{
+    const res=await fetch('/api/bom',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({prompt,history:S.bom.history.slice(-6)})});
+    const data=await res.json();if(data.error) throw new Error(data.error);
+    S.bom.lastBom=data.bom;pdfData.bom=data.bom;
+    renderBOM(data.bom);
+    const sum=`${data.bom.items?.length||0} items · $${(data.bom.total_cost_usd||0).toFixed(2)} total`;
+    appendMsg('bom-chat','assistant',sum);
+    S.bom.history.push({role:'assistant',content:sum});
+  }catch(e){showErr('bom',e.message);}
+  finally{setLoading('bom',false);}
+}
+document.getElementById('bom-input').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();runBOM();}});
+
+function renderBOM(bom){
+  document.getElementById('bom-ph').style.display='none';
+  document.getElementById('bom-dl').style.display='inline-flex';
+  const items=bom.items||[];
+  const rows=items.map(it=>`<tr>
+    <td><strong>${it.ref||''}</strong></td>
+    <td>${it.description||''}</td>
+    <td><code>${it.value||''}</code></td>
+    <td style="text-align:center">${it.quantity||1}</td>
+    <td>$${(it.unit_cost||0).toFixed(2)}</td>
+    <td><strong>$${(it.total_cost||0).toFixed(2)}</strong></td>
+    <td><a href="${it.supplier_url||'#'}" target="_blank">${it.supplier||''}</a></td>
+    <td style="font-size:.72rem;color:var(--text-dim)">${it.notes||''}</td></tr>`).join('');
+  document.getElementById('bom-out').innerHTML=`
+    <table class="bom-table">
+      <thead><tr><th>Ref</th><th>Description</th><th>Value</th><th>Qty</th><th>Unit$</th><th>Total</th><th>Supplier</th><th>Notes</th></tr></thead>
+      <tbody>${rows}
+        <tr><td colspan="5" style="text-align:right;font-weight:700">TOTAL</td>
+          <td><strong style="color:var(--accent2)">$${(bom.total_cost_usd||0).toFixed(2)}</strong></td><td colspan="2"></td></tr>
+      </tbody></table>
+    <div class="bom-meta">
+      ${bom.difficulty?`<span>Difficulty: <strong>${bom.difficulty}</strong></span>`:''}
+      ${bom.estimated_build_time?`<span>Build time: <strong>${bom.estimated_build_time}</strong></span>`:''}
+      ${bom.tools_needed?.length?`<span>Tools: <strong>${bom.tools_needed.join(', ')}</strong></span>`:''}
+    </div>`;
+  document.getElementById('bom-out').style.display='block';
+}
+
+// ── GENERIC CHAT ──────────────────────────────────────────────────────────
+async function runChat(endpoint,prefix,outputId,placeholderId){
+  const input=document.getElementById(prefix+'-input');
+  const prompt=input.value.trim();if(!prompt) return;
+  appendMsg(prefix+'-chat','user',prompt);
+  S[prefix].history.push({role:'user',content:prompt});
+  input.value='';setLoading(prefix,true);showErr(prefix,'');
+  const outEl=document.getElementById(outputId);
+  const phEl=document.getElementById(placeholderId);
+  try{
+    const res=await fetch('/api/'+endpoint,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({prompt,history:S[prefix].history.slice(-10)})});
+    const data=await res.json();if(data.error) throw new Error(data.error);
+    outEl.innerHTML=marked.parse(data.result);
+    outEl.style.display='block';
+    if(phEl) phEl.style.display='none';
+    S[prefix].history.push({role:'assistant',content:data.result});
+    appendMsg(prefix+'-chat','assistant',data.result.substring(0,160)+(data.result.length>160?'...':''));
+    if(prefix==='ard'){
+      S.ard.lastCode=data.result;pdfData.arduino_code=data.result;
+      document.getElementById('ard-dl').style.display='inline-flex';
+    }
+  }catch(e){showErr(prefix,e.message);}
+  finally{setLoading(prefix,false);}
+}
+['comp','debug','ard','learn'].forEach(p=>{
+  const el=document.getElementById(p+'-input');if(!el) return;
+  el.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();
+    const ep={comp:'components',debug:'debug',ard:'arduino',learn:'learn'}[p];
+    const out={comp:'comp-out',debug:'debug-out',ard:'ard-out',learn:'learn-out'}[p];
+    const ph={comp:'comp-ph',debug:'debug-ph',ard:'ard-ph',learn:'learn-ph'}[p];
+    runChat(ep,p,out,ph);}});
+});
+
+// ── QUIZ ──────────────────────────────────────────────────────────────────
+const QUIZ_BANK = {
+  beginner:[
+    {q:"What is the purpose of a resistor in an LED circuit?",
+     opts:["Increase brightness","Limit current to prevent LED burnout","Store electrical charge","Reverse current direction"],
+     ans:1,exp:"LEDs have a very low forward resistance. Without a current-limiting resistor, too much current flows and the LED burns out. Use <strong>Ohm's Law: R = (Vs - Vf) / If</strong> to calculate the right value."},
+    {q:"What does Ohm's Law state?",
+     opts:["V = I × R","P = V × I","V = P / R","I = P × V"],
+     ans:0,exp:"<strong>V = I × R</strong> — Voltage equals Current times Resistance. This is the most fundamental law in electronics, relating three key quantities."},
+    {q:"What is the unit of electrical resistance?",
+     opts:["Ampere","Volt","Ohm (Ω)","Watt"],
+     ans:2,exp:"Resistance is measured in <strong>Ohms (Ω)</strong>, named after Georg Ohm. 1 Ω means 1 volt produces 1 ampere of current."},
+    {q:"In a series circuit, how does current behave?",
+     opts:["It splits between components","It is the same through all components","It increases at each component","It decreases at each component"],
+     ans:1,exp:"In a <strong>series circuit</strong>, current is the same everywhere — there's only one path for current to flow. Voltage, however, splits across each component."},
+    {q:"What component stores electrical charge?",
+     opts:["Resistor","Inductor","Capacitor","Diode"],
+     ans:2,exp:"A <strong>capacitor</strong> stores electrical energy as an electric field between two plates. The amount stored is Q = C × V, where C is capacitance in Farads."},
+    {q:"What does an LED stand for?",
+     opts:["Light Emitting Diode","Low Energy Device","Lateral Electronic Driver","Light Enhancing Detector"],
+     ans:0,exp:"<strong>Light Emitting Diode</strong> — a semiconductor device that emits light when current flows in the forward direction. Different materials give different colors."},
+  ],
+  intermediate:[
+    {q:"A 9V battery powers an LED (Vf=2V) with a 220Ω resistor. What is the current?",
+     opts:["9mA","31.8mA","40.9mA","22mA"],
+     ans:1,exp:"Using Ohm's Law: <strong>I = (Vs - Vf) / R = (9 - 2) / 220 = 7/220 ≈ 31.8mA</strong>. This is slightly above the typical 20mA LED rating — a 330Ω resistor would be safer."},
+    {q:"What is the function of a bypass capacitor?",
+     opts:["Amplify signal","Filter AC noise from DC power supply","Store energy for motors","Block DC current"],
+     ans:1,exp:"A <strong>bypass (decoupling) capacitor</strong> placed near an IC's power pins filters out high-frequency noise from the power supply, preventing glitches. Typical values: 100nF ceramic."},
+    {q:"In an NPN transistor, what controls the collector current?",
+     opts:["Emitter voltage","Base current","Collector voltage","Supply voltage"],
+     ans:1,exp:"In an <strong>NPN transistor</strong>, a small base current controls a much larger collector current. This is the transistor's amplification effect: Ic = β × Ib, where β (hFE) is the gain."},
+    {q:"What is the voltage divider output with 10kΩ and 4.7kΩ from 5V?",
+     opts:["3.19V","1.81V","2.5V","1.5V"],
+     ans:1,exp:"Voltage divider formula: <strong>Vout = Vin × R2/(R1+R2) = 5 × 4700/(10000+4700) = 5 × 0.32 ≈ 1.6V</strong>. The bottom resistor takes the fraction R2/(R1+R2) of the supply."},
+    {q:"What does PWM stand for and what is it used for?",
+     opts:["Pulse Width Modulation — controls average power/speed","Power Wave Management — filters noise","Partial Wave Modulation — amplifies signals","Phase Width Measurement — measures frequency"],
+     ans:0,exp:"<strong>Pulse Width Modulation</strong> rapidly switches power on/off. The duty cycle (% on-time) controls average power. Used for LED dimming, motor speed control, and DAC-like analog outputs from digital pins."},
+  ],
+  advanced:[
+    {q:"Why does a 7805 voltage regulator get hot with 12V input delivering 500mA?",
+     opts:["Faulty regulator","Power dissipation: P=(12-5)×0.5=3.5W as heat","Incorrect capacitor values","Load resistance too low"],
+     ans:1,exp:"The 7805 drops excess voltage as heat: <strong>P = (Vin - Vout) × I = (12-5) × 0.5 = 3.5W</strong>. This needs a heatsink. A better solution is a switching regulator (buck converter) which can achieve 90%+ efficiency."},
+    {q:"What is the -3dB frequency of a 10kΩ resistor and 10nF capacitor RC low-pass filter?",
+     opts:["15.9 kHz","1.59 kHz","159 Hz","15.9 Hz"],
+     ans:1,exp:"<strong>f = 1/(2π×R×C) = 1/(2π×10000×10×10⁻⁹) = 1/(628×10⁻⁶) ≈ 1592 Hz ≈ 1.59 kHz</strong>. At this frequency, the output is 0.707× the input (-3dB). Frequencies above this are attenuated."},
+    {q:"A MOSFET gate needs 10V to turn on but Arduino outputs 5V. What's the best solution?",
+     opts:["Use a logic-level MOSFET (e.g. IRLZ44N)","Add a pull-up resistor","Increase Arduino voltage","Use a diode bridge"],
+     ans:0,exp:"<strong>Logic-level MOSFETs</strong> (like IRLZ44N) are designed to fully switch on with 5V or even 3.3V gate voltage. Standard power MOSFETs (IRF540) need 10V+ at the gate to fully saturate."},
+  ]
+};
+
+function setLevel(level, btn){
+  quiz.level=level;
+  document.querySelectorAll('.level-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function loadQuiz(){
+  const bank=QUIZ_BANK[quiz.level];
+  const q=bank[Math.floor(Math.random()*bank.length)];
+  quiz.current=q;
+  const area=document.getElementById('quiz-area');
+  area.innerHTML=`
+    <div class="quiz-card">
+      <div class="quiz-q">${q.q}</div>
+      <div class="quiz-options">
+        ${q.opts.map((o,i)=>`<button class="quiz-opt" onclick="answerQuiz(${i})">${String.fromCharCode(65+i)}. ${o}</button>`).join('')}
+      </div>
+    </div>`;
+  // Progress bar
+  const pct=Math.min(100,quiz.total*10);
+  document.getElementById('quiz-prog').style.width=pct+'%';
+}
+
+function answerQuiz(idx){
+  if(!quiz.current) return;
+  const q=quiz.current;
+  quiz.total++;
+  const opts=document.querySelectorAll('.quiz-opt');
+  opts.forEach(o=>o.disabled=true);
+  if(idx===q.ans){
+    opts[idx].classList.add('correct');
+    quiz.score++;quiz.streak++;
+  } else {
+    opts[idx].classList.add('wrong');
+    opts[q.ans].classList.add('correct');
+    quiz.streak=0;
+  }
+  // Explanation
+  const card=document.querySelector('.quiz-card');
+  const exp=document.createElement('div');
+  exp.className='quiz-explain';
+  exp.innerHTML=(idx===q.ans?'✅ <strong>Correct!</strong> ':'❌ <strong>Incorrect.</strong> ')+q.exp;
+  card.appendChild(exp);
+  // Update stats
+  document.getElementById('quiz-score').textContent=`Score: ${quiz.score} / ${quiz.total}`;
+  document.getElementById('stat-total').textContent=quiz.total;
+  document.getElementById('stat-correct').textContent=quiz.score;
+  document.getElementById('stat-acc').textContent=Math.round((quiz.score/quiz.total)*100)+'%';
+  document.getElementById('stat-streak').textContent=quiz.streak+(quiz.streak>=3?' 🔥':'');
+  // History
+  quiz.history.unshift({q:q.q.substring(0,40)+'...',correct:idx===q.ans});
+  document.getElementById('quiz-history').innerHTML=
+    quiz.history.slice(0,8).map(h=>`${h.correct?'✅':'❌'} ${h.q}`).join('<br>');
+  // Progress bar
+  document.getElementById('quiz-prog').style.width=Math.min(100,quiz.total*10)+'%';
+}
+
+// ── SAVE/LOAD ─────────────────────────────────────────────────────────────
+async function saveCircuit(){
+  const name=document.getElementById('project-name').value.trim()||'Untitled Circuit';
+  const payload={name,schematic_image:S.sch.lastImage,
+    schematic_description:document.getElementById('sch-desc').textContent||'',
+    components:S.sch.lastSchema?.components||[],
+    simulation:S.sim.lastSim,arduino_code:S.ard.lastCode,bom:S.bom.lastBom};
+  try{
+    const res=await fetch('/api/save-circuit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const data=await res.json();
+    // Brief visual feedback
+    const btn=document.querySelector('.btn-sm');
+    const orig=btn.textContent;btn.textContent='✅ Saved!';
+    setTimeout(()=>btn.textContent=orig,2000);
+  }catch(e){alert('Save failed: '+e.message);}
+}
+
+async function loadSavedList(){
+  try{
+    const res=await fetch('/api/list-circuits');
+    const data=await res.json();
+    const el=document.getElementById('saved-list');
+    if(!data.circuits.length){
+      el.innerHTML='<div class="placeholder"><div class="placeholder-icon">🗂️</div><p>No circuits saved yet</p></div>'; return;
+    }
+    el.innerHTML=data.circuits.map(c=>`
+      <div class="saved-item">
+        <div class="saved-item-info">
+          <div class="saved-item-name">⚡ ${c.name}</div>
+          <div class="saved-item-time">${c.saved_at}</div>
+        </div>
+        <button class="btn btn-sm" onclick="loadCircuit('${c.id}')">Load</button>
+      </div>`).join('');
+  }catch(e){console.error(e);}
+}
+
+async function loadCircuit(id){
+  try{
+    const res=await fetch(`/api/load-circuit/${id}`);
+    const data=await res.json();if(data.error){alert(data.error);return;}
+    document.getElementById('project-name').value=data.name||'';
+    document.getElementById('loaded-ph').style.display='none';
+    document.getElementById('loaded-out').style.display='block';
+    const img=document.getElementById('loaded-img');
+    if(data.schematic_image){img.src='data:image/png;base64,'+data.schematic_image;img.style.display='block';}
+    document.getElementById('loaded-desc').textContent=data.schematic_description||'';
+    if(data.schematic_image){S.sch.lastImage=data.schematic_image;pdfData.schematic_image=data.schematic_image;}
+    if(data.simulation){S.sim.lastSim=data.simulation;pdfData.simulation=data.simulation;}
+    if(data.arduino_code){S.ard.lastCode=data.arduino_code;pdfData.arduino_code=data.arduino_code;}
+    if(data.bom){S.bom.lastBom=data.bom;pdfData.bom=data.bom;}
+    pdfData.components=data.components||[];
+  }catch(e){alert('Load failed: '+e.message);}
+}
+
+// ── DOWNLOADS ─────────────────────────────────────────────────────────────
+function dlSchematic(){if(!S.sch.lastImage) return;const a=document.createElement('a');a.href='data:image/png;base64,'+S.sch.lastImage;a.download='schematic.png';a.click();}
+function dlArduino(){const c=S.ard.lastCode;if(!c) return;const m=c.match(/```(?:cpp|arduino|ino)?\n([\s\S]*?)```/);const blob=new Blob([m?m[1]:c],{type:'text/plain'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='sketch.ino';a.click();}
+function dlBOM(){if(!S.bom.lastBom) return;const items=S.bom.lastBom.items||[];const hdr='Ref,Description,Value,Qty,Unit Cost,Total,Supplier,Part#,Notes\n';const rows=items.map(i=>[i.ref,i.description,i.value,i.quantity,i.unit_cost,i.total_cost,i.supplier,i.part_number||'',i.notes||''].map(v=>`"${v}"`).join(',')).join('\n');const blob=new Blob([hdr+rows],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='bom.csv';a.click();}
+
+// ── PDF ────────────────────────────────────────────────────────────────────
+async function exportPDF(){
+  if(!pdfData.schematic_image&&!pdfData.simulation&&!pdfData.arduino_code&&!pdfData.bom){alert('Generate at least one section first!');return;}
+  pdfData.project_name=document.getElementById('project-name').value||'Circuit Copilot Report';
+  try{
+    const res=await fetch('/api/export-pdf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(pdfData)});
+    if(!res.ok) throw new Error('PDF failed');
+    const blob=await res.blob();
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+    a.download=(pdfData.project_name.replace(/\s+/g,'_')||'report')+'.pdf';a.click();
+  }catch(e){alert('PDF error: '+e.message);}
+}
+</script>
+</body>
+</html>
