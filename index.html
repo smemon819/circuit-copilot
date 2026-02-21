@@ -431,7 +431,9 @@
     }
 
     @media(max-width:800px) {
-      .workspace {}
+      .workspace {
+        grid-template-columns: 1fr;
+      }
     }
 
     /* ── DASHBOARD ───────────────────────────────────────────────────────── */
@@ -2374,6 +2376,37 @@
       }
     }
 
+    /* ── HARDWARE BRIDGE (SERIAL) ───────────────────────────────────────── */
+    .serial-monitor {
+      background: #05070a;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      height: 250px;
+      overflow-y: auto;
+      padding: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .75rem;
+      color: var(--accent2);
+      margin-top: 10px;
+      white-space: pre-wrap;
+    }
+
+    .serial-controls {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+      align-items: center;
+    }
+
+    .serial-plotter {
+      width: 100%;
+      height: 120px;
+      background: #000;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-top: 12px;
+    }
+
     /* ── LAB MODE ────────────────────────────────────────────────────────── */
     body.lab-mode {
       background: #000;
@@ -2498,6 +2531,7 @@
         <button class="btn btn-sm btn-lab"
           style="font-size:.66rem;background:var(--bg3);border:1px solid var(--accent2);color:var(--accent2)"
           onclick="toggleLabMode()" title="Workbench Mode">🔬 LAB MODE</button>
+        <button class="btn btn-sm" style="font-size:.66rem" id="btn-collab" onclick="startCollab()">🤝 Collab</button>
         <button class="btn btn-sm" style="font-size:.66rem" onclick="saveCircuit()">💾 Save</button>
         <button class="btn btn-orange" onclick="exportPDF()">📄 PDF</button>
         <button class="btn btn-sm" style="font-size:.66rem" onclick="toggleShortcuts()"
@@ -2619,6 +2653,16 @@
               <button class="voice-btn" id="sch-voice" onclick="toggleVoice('sch-input','sch-voice')">🎤</button>
               <button class="btn btn-primary" id="sch-btn" onclick="runSchematic()">⚡</button>
             </div>
+            <div id="persona-row" style="margin-top:8px; display:flex; gap:6px; align-items:center;">
+              <span style="font-size:.64rem;color:var(--text-dim)">AI PERSONA:</span>
+              <select id="ai-persona" class="btn btn-sm"
+                style="font-size:.64rem; background:var(--bg3); border-color:var(--border)">
+                <option value="general">🤖 General Assistant</option>
+                <option value="analog">🔈 Analog Expert</option>
+                <option value="embedded">📟 Embedded Engineer</option>
+                <option value="power">⚡ Power Specialist</option>
+              </select>
+            </div>
             <div class="examples">
               <span class="chip" onclick="qs('sch','LED with 220Ω resistor and 9V battery')">LED circuit</span>
               <span class="chip" onclick="qs('sch','LED with button switch and 5V')">+ Button</span>
@@ -2642,6 +2686,8 @@
               <button class="btn btn-sm btn-warn" id="sch-audit" style="display:none" onclick="runAudit('sch')">🔍 Scan
                 for Errors</button>
               <button class="btn btn-sm" id="sch-eda" style="display:none" onclick="exportNetlist()">📦 Netlist</button>
+              <button class="btn btn-sm btn-purple" id="sch-kicad" style="display:none" onclick="exportKiCad()">📐
+                KiCad</button>
             </div>
           </div>
           <div class="panel-body">
@@ -3017,6 +3063,25 @@
               <p>Code appears here</p>
             </div>
             <div id="ard-out" class="msg assistant" style="display:none;max-width:100%;"></div>
+          </div>
+        </div>
+        <div class="panel" style="grid-column: 1 / -1;">
+          <div class="panel-hdr">
+            <span class="panel-title">// HARDWARE BRIDGE (WEB-SERIAL)</span>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-sm" id="btn-serial-connect" onclick="connectSerial()">🔌 Connect Device</button>
+              <button class="btn btn-sm btn-warn" onclick="clearSerial()">🗑️ Clear</button>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="serial-monitor" id="serial-out">Connect a device to see serial output...</div>
+            <canvas class="serial-plotter" id="serial-plot"></canvas>
+            <div class="serial-controls">
+              <input type="text" id="serial-input" placeholder="Type message to device..."
+                style="flex:1;background:var(--input-bg);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:.8rem;outline:none;"
+                onkeydown="if(event.key==='Enter')sendSerial()" />
+              <button class="btn btn-primary" onclick="sendSerial()">Send</button>
+            </div>
           </div>
         </div>
       </div>
@@ -3400,6 +3465,8 @@
 
   <script>
     // ── STATE ──────────────────────────────────────────────────────────────────
+    let currentCid = null;
+    let collabSocket = null;
     const S = {
       sch: { history: [], lastImage: null, lastSchema: null },
       sim: { history: [], lastSim: null },
@@ -4030,6 +4097,7 @@
         if (prefix === 'ard') {
           S.ard.lastCode = data.result; pdfData.arduino_code = data.result;
           document.getElementById('ard-dl').style.display = 'inline-flex';
+          broadcastUpdate('arduino', data.result);
         }
       } catch (e) { showErr(prefix, e.message); }
       finally { setLoading(prefix, false); }
@@ -4160,10 +4228,12 @@
       try {
         const res = await fetch('/api/save-circuit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
         const data = await res.json();
+        currentCid = data.id;
         const btn = document.querySelector('.btn-sm');
         const orig = btn.textContent; btn.textContent = '✅ Cloud Saved!';
         setTimeout(() => btn.textContent = orig, 2000);
         if (is_public) loadGallery();
+        broadcastUpdate('rename', name);
       } catch (e) { alert('Save failed: ' + e.message); }
     }
 
@@ -4370,6 +4440,9 @@
     }
 
     // ── KEYBOARD SHORTCUTS ────────────────────────────────────────────────────
+    document.getElementById('project-name').addEventListener('input', (e) => {
+      broadcastUpdate('rename', e.target.value);
+    });
     document.addEventListener('keydown', (e) => {
       // Don't trigger if user is typing in an input/textarea
       const active = document.activeElement;
@@ -4706,6 +4779,15 @@
       // Here we'll append the custom parts library to the user prompt internally
       const input = document.getElementById('sch-input');
       const originalVal = input.value;
+      const persona = document.getElementById('ai-persona').value;
+      const expertise = {
+        analog: "Focus on signal integrity, analog filtering, and biasing.",
+        embedded: "Focus on microcontroller pinouts, firmware compatibility, and decoupling.",
+        power: "Focus on voltage regulation, current capacity, and thermal management."
+      }[persona] || "";
+
+      if (expertise) input.value += ` [PERSONA: ${persona.toUpperCase()} - ${expertise}]`;
+
       if (customParts.length) {
         const partsInfo = customParts.map(p => `[CUSTOM PART: Name: ${p.name}, Pins: ${p.pins}, Specs: ${p.specs}]`).join(' ');
         input.value += ` (You can use these custom components from my library: ${partsInfo})`;
@@ -4715,6 +4797,11 @@
 
       input.value = originalVal; // Restore UI
       if (S.sch.lastSchema) {
+        broadcastUpdate('schematic', {
+          schema: S.sch.lastSchema,
+          image: S.sch.lastImage,
+          desc: document.getElementById('sch-desc').textContent
+        });
         document.getElementById('sch-audit').style.display = 'inline-flex';
         document.getElementById('sch-eda').style.display = 'inline-flex';
         addToCircuitHistory(S.sch.lastSchema.title || document.getElementById('sch-input').value, S.sch.lastSchema);
@@ -4948,6 +5035,165 @@
       }
       if (document.getElementById('tab-dashboard').classList.contains('active')) renderDashboard();
     };
+
+    // ── HARDWARE BRIDGE (SERIAL) ──────────────────────────────────────────────
+    let port, reader, writer, serialPlotData = [];
+    async function connectSerial() {
+      const btn = document.getElementById('btn-serial-connect');
+      try {
+        if (port) {
+          await reader.cancel(); await port.close();
+          port = null; btn.textContent = '🔌 Connect Device';
+          showToast('🔌 Disconnected'); return;
+        }
+        port = await navigator.serial.requestPort();
+        await port.open({ baudRate: 9600 });
+        btn.textContent = '🔴 Disconnect';
+        showToast('🔌 Connected to Hardware!');
+        readLoop();
+      } catch (e) { showToast('❌ Serial Error: ' + e.message); }
+    }
+    async function readLoop() {
+      const out = document.getElementById('serial-out');
+      while (port?.readable) {
+        reader = port.readable.getReader();
+        try {
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            const text = new TextDecoder().decode(value);
+            out.textContent += text; out.scrollTop = out.scrollHeight;
+            processPlotData(text);
+          }
+        } catch (e) { console.error(e); } finally { reader.releaseLock(); }
+      }
+    }
+    async function sendSerial() {
+      if (!port || !port.writable) { showToast('⚠ Device not connected'); return; }
+      const input = document.getElementById('serial-input');
+      const msg = input.value + '\n';
+      writer = port.writable.getWriter();
+      await writer.write(new TextEncoder().encode(msg));
+      writer.releaseLock(); input.value = '';
+    }
+    function clearSerial() {
+      document.getElementById('serial-out').textContent = '';
+      serialPlotData = []; drawSerialPlot();
+    }
+    function processPlotData(text) {
+      const lines = text.split('\n');
+      lines.forEach(line => {
+        const val = parseFloat(line.trim());
+        if (!isNaN(val)) {
+          serialPlotData.push(val);
+          if (serialPlotData.length > 200) serialPlotData.shift();
+        }
+      });
+      drawSerialPlot();
+    }
+    function drawSerialPlot() {
+      const canvas = document.getElementById('serial-plot');
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width = canvas.offsetWidth;
+      const H = canvas.height = canvas.offsetHeight;
+      ctx.clearRect(0, 0, W, H);
+      if (serialPlotData.length < 2) return;
+      const max = Math.max(...serialPlotData, 10), min = Math.min(...serialPlotData, 0);
+      const range = max - min || 1;
+      ctx.beginPath(); ctx.strokeStyle = '#00f090'; ctx.lineWidth = 2;
+      serialPlotData.forEach((v, i) => {
+        const x = (i / (serialPlotData.length - 1)) * W;
+        const y = H - ((v - min) / range) * H;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+    }
+
+    async function exportKiCad() {
+      const name = document.getElementById('project-name').value.trim() || 'Circuit';
+      try {
+        const res = await fetch('/api/export-kicad', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, components: S.sch.lastSchema?.components || [] })
+        });
+        const data = await res.json();
+        const blob = new Blob([data.kicad_sch], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = name + '.kicad_sch'; a.click();
+        showToast('📦 KiCad Schematic Downloaded!');
+      } catch (e) { showToast('❌ Export failed'); }
+    }
+
+    // ── CO-PILOT LIVE (COLLABORATION) ─────────────────────────────────────────
+    function startCollab() {
+      if (!currentCid) {
+        showToast('⚠ Please SAVE your circuit first to start collaboration.');
+        return;
+      }
+      if (collabSocket) {
+        collabSocket.close();
+        collabSocket = null;
+        document.getElementById('btn-collab').textContent = '🤝 Collab';
+        document.getElementById('btn-collab').classList.remove('btn-green');
+        showToast('🤝 Collaboration Session Ended');
+        return;
+      }
+
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/ws/${currentCid}`;
+      collabSocket = new WebSocket(wsUrl);
+
+      collabSocket.onopen = () => {
+        document.getElementById('btn-collab').textContent = '🟢 Live';
+        document.getElementById('btn-collab').classList.add('btn-green');
+        showToast('🟢 Co-Pilot Live Active! Others on this project will sync.');
+      };
+
+      collabSocket.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+        handleRemoteUpdate(data);
+      };
+
+      collabSocket.onclose = () => {
+        document.getElementById('btn-collab').textContent = '🤝 Collab';
+        document.getElementById('btn-collab').classList.remove('btn-green');
+        collabSocket = null;
+      };
+    }
+
+    function broadcastUpdate(type, payload) {
+      if (collabSocket && collabSocket.readyState === WebSocket.OPEN) {
+        collabSocket.send(JSON.stringify({ type, payload, timestamp: Date.now() }));
+      }
+    }
+
+    function handleRemoteUpdate(data) {
+      const { type, payload } = data;
+      switch (type) {
+        case 'rename':
+          document.getElementById('project-name').value = payload;
+          break;
+        case 'schematic':
+          S.sch.lastSchema = payload.schema;
+          S.sch.lastImage = payload.image;
+          if (payload.image) {
+            document.getElementById('sch-img').src = 'data:image/png;base64,' + payload.image;
+            document.getElementById('sch-img').style.display = 'block';
+            document.getElementById('sch-ph').style.display = 'none';
+          }
+          document.getElementById('sch-desc').textContent = payload.desc || '';
+          showToast('⚡ Schematic updated by collaborator');
+          break;
+        case 'arduino':
+          S.ard.lastCode = payload;
+          document.getElementById('ard-out').innerHTML = marked.parse(payload);
+          document.getElementById('ard-out').style.display = 'block';
+          document.getElementById('ard-ph').style.display = 'none';
+          document.getElementById('ard-dl').style.display = 'inline-flex';
+          showToast('💻 Code updated by collaborator');
+          break;
+      }
+    }
 
     // ── FEATURE 4: ONBOARDING TOUR ──────────────────────────────────────────
     const TOUR_STEPS = [

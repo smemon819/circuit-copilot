@@ -1,10 +1,11 @@
 import os, io, json, base64, re, datetime, sqlite3
+from typing import List, Dict
 import schemdraw
 import schemdraw.elements as elm
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from groq import Groq
@@ -35,6 +36,29 @@ def init_db():
             )
         """)
 init_db()
+
+# --- REAL-TIME COLLABORATION MANAGER ---
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: Dict[str, List[WebSocket]] = {}
+
+    async def connect(self, websocket: WebSocket, cid: str):
+        await websocket.accept()
+        if cid not in self.active_connections:
+            self.active_connections[cid] = []
+        self.active_connections[cid].append(websocket)
+
+    def disconnect(self, websocket: WebSocket, cid: str):
+        if cid in self.active_connections:
+            self.active_connections[cid].remove(websocket)
+
+    async def broadcast(self, message: str, cid: str, sender: WebSocket):
+        if cid in self.active_connections:
+            for connection in self.active_connections[cid]:
+                if connection != sender:
+                    await connection.send_text(message)
+
+manager = ConnectionManager()
 
 # ── System Prompts ─────────────────────────────────────────────────────────────
 
@@ -552,6 +576,42 @@ async def get_gallery():
             "description": tech.get("schematic_description")
         })
     return JSONResponse({"gallery": gallery})
+
+
+@app.post("/api/export-kicad")
+async def export_kicad(request: Request):
+    body = await request.json()
+    name = body.get("name", "Circuit")
+    components = body.get("components", [])
+    
+    # Generate basic KiCad 6.0+ S-expression schematic
+    kicad = f'(kicad_sch (version 20211123) (generator "circuit_copilot") (uuid "{hash(name)}")\n'
+    kicad += f'  (paper "A4")\n'
+    
+    for i, comp in enumerate(components):
+        # Extremely simplified mapping for demonstration
+        ref = comp.get("name", f"U{i}")
+        val = comp.get("value", "???")
+        x, y = 100 + (i % 5) * 40, 100 + (i // 5) * 40
+        kicad += f'  (symbol (lib_id "Device:{comp.get("type", "R")}") (at {x} {y} 0)\n'
+        kicad += f'    (property "Reference" "{ref}" (id 0) (at {x} {y-5} 0))\n'
+        kicad += f'    (property "Value" "{val}" (id 1) (at {x} {y+5} 0))\n'
+        kicad += f'  )\n'
+        
+    kicad += ')'
+    return JSONResponse({"kicad_sch": kicad})
+
+
+@app.websocket("/ws/{cid}")
+async def websocket_endpoint(websocket: WebSocket, cid: str):
+    await manager.connect(websocket, cid)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            # Broadcast update to everyone else in this circuit session
+            await manager.broadcast(data, cid, websocket)
+    except WebSocketDisconnect:
+        manager.disconnect(websocket, cid)
 
 
 @app.post("/api/export-pdf")
