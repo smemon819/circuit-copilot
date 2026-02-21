@@ -329,8 +329,50 @@ textarea::placeholder{color:var(--text-dim);}
 .tab-content{display:none;}
 .tab-content.active{display:block;}
 
+/* ── TEMPLATES ────────────────────────────────────────────────────────── */
+.tpl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;}
+.tpl-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;
+  padding:16px;transition:all .2s;cursor:default;}
+.tpl-card:hover{border-color:var(--accent);box-shadow:0 0 20px rgba(0,200,240,.15);}
+.tpl-card h3{color:var(--text-hi);font-size:.95rem;margin-bottom:6px;display:flex;align-items:center;gap:8px;}
+.tpl-card p{font-size:.78rem;color:var(--text-dim);line-height:1.5;margin-bottom:10px;}
+.tpl-card .tpl-meta{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+
+/* ── COMPONENT REFERENCE ──────────────────────────────────────────────── */
+.ref-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-top:12px;}
+.ref-card{background:var(--bg3);border:1px solid var(--border);border-radius:8px;
+  padding:10px;cursor:pointer;transition:all .15s;}
+.ref-card:hover{border-color:var(--accent);background:var(--bg2);}
+.ref-card h4{font-size:.82rem;color:var(--text-hi);margin-bottom:3px;}
+.ref-card .ref-formula{font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--accent2);}
+.ref-card .ref-vals{font-size:.68rem;color:var(--text-dim);margin-top:2px;}
+.ref-toggle{display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 0;
+  color:var(--accent);font-size:.78rem;font-weight:700;border:none;background:none;
+  font-family:'Syne',sans-serif;}
+.ref-toggle:hover{color:var(--accent2);}
+
+/* ── SHORTCUTS MODAL ──────────────────────────────────────────────────── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;
+  display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+.modal-overlay.visible{display:flex;}
+.modal{background:var(--panel);border:1px solid var(--border);border-radius:14px;
+  padding:24px;max-width:480px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.5);}
+.modal h2{color:var(--accent);font-size:1.1rem;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.modal .close-modal{position:absolute;top:12px;right:16px;background:none;border:none;
+  color:var(--text-dim);font-size:1.2rem;cursor:pointer;}
+.modal .close-modal:hover{color:var(--accent);}
+.shortcut-row{display:flex;justify-content:space-between;padding:6px 0;
+  border-bottom:1px solid var(--border);font-size:.82rem;}
+.shortcut-row:last-child{border-bottom:none;}
+.shortcut-key{display:inline-flex;gap:4px;}
+.shortcut-key kbd{background:var(--bg3);border:1px solid var(--border2);border-radius:4px;
+  padding:2px 7px;font-family:'JetBrains Mono',monospace;font-size:.72rem;
+  color:var(--accent);min-width:22px;text-align:center;}
+
 footer{text-align:center;padding:18px 0 10px;color:var(--text-dim);font-size:.66rem;
   font-family:'JetBrains Mono',monospace;border-top:1px solid var(--border);margin-top:24px;}
+footer a{color:var(--accent);text-decoration:none;}
+footer a:hover{text-decoration:underline;}
 </style>
 </head>
 <body>
@@ -353,6 +395,7 @@ footer{text-align:center;padding:18px 0 10px;color:var(--text-dim);font-size:.66
     </button>
     <button class="btn btn-sm" style="font-size:.66rem" onclick="saveCircuit()">💾 Save</button>
     <button class="btn btn-orange" onclick="exportPDF()">📄 PDF</button>
+    <button class="btn btn-sm" style="font-size:.66rem" onclick="toggleShortcuts()" title="Keyboard shortcuts (?)">⌨️</button>
   </div>
 </header>
 
@@ -373,6 +416,7 @@ footer{text-align:center;padding:18px 0 10px;color:var(--text-dim);font-size:.66
   <button class="tab"         onclick="switchTab('arduino',this)"><span>💻</span>Arduino</button>
   <button class="tab"         onclick="switchTab('learn',this)"><span>📚</span>Learn</button>
   <button class="tab"         onclick="switchTab('quiz',this)"><span>🎯</span>Quiz</button>
+  <button class="tab"         onclick="switchTab('templates',this)"><span>📋</span>Templates</button>
   <button class="tab"         onclick="switchTab('saved',this)"><span>🗂️</span>Saved</button>
 </div>
 
@@ -579,6 +623,52 @@ footer{text-align:center;padding:18px 0 10px;color:var(--text-dim);font-size:.66
       <div class="panel-body">
         <div id="comp-ph" class="placeholder"><div class="placeholder-icon">🧩</div><p>Recommendations here</p></div>
         <div id="comp-out" class="msg assistant" style="display:none;max-width:100%;"></div>
+        <div class="divider"></div>
+        <button class="ref-toggle" onclick="toggleRef()" id="ref-toggle-btn">▶ Component Reference</button>
+        <div id="comp-ref" style="display:none">
+          <div class="ref-grid">
+            <div class="ref-card" onclick="qs('comp','What resistor do I need for a red LED on 5V?')">
+              <h4>⚡ Resistor</h4>
+              <div class="ref-formula">V = I × R</div>
+              <div class="ref-vals">Common: 220Ω, 1kΩ, 4.7kΩ, 10kΩ</div>
+            </div>
+            <div class="ref-card" onclick="qs('comp','Best capacitor for power supply filtering?')">
+              <h4>⚡ Capacitor</h4>
+              <div class="ref-formula">Q = C × V</div>
+              <div class="ref-vals">Common: 100nF, 10µF, 100µF, 1000µF</div>
+            </div>
+            <div class="ref-card" onclick="qs('comp','Explain NPN transistor for switching a motor')">
+              <h4>🔀 Transistor (NPN)</h4>
+              <div class="ref-formula">Ic = β × Ib</div>
+              <div class="ref-vals">Common: 2N2222, BC547, TIP120</div>
+            </div>
+            <div class="ref-card" onclick="qs('comp','Best LED for indicator light on 3.3V?')">
+              <h4>💡 LED</h4>
+              <div class="ref-formula">Vf ≈ 2V (red), 3.2V (blue)</div>
+              <div class="ref-vals">Typical: 20mA, 2V–3.3V forward</div>
+            </div>
+            <div class="ref-card" onclick="qs('comp','Which diode for reverse polarity protection?')">
+              <h4>🔒 Diode</h4>
+              <div class="ref-formula">Vf ≈ 0.7V (silicon)</div>
+              <div class="ref-vals">Common: 1N4007, 1N5819 (Schottky)</div>
+            </div>
+            <div class="ref-card" onclick="qs('comp','Best voltage regulator for 5V from 12V?')">
+              <h4>📐 Voltage Regulator</h4>
+              <div class="ref-formula">P = (Vin - Vout) × I</div>
+              <div class="ref-vals">Common: 7805, LM1117, AMS1117</div>
+            </div>
+            <div class="ref-card" onclick="qs('comp','What inductor for a 5V buck converter?')">
+              <h4>🌀 Inductor</h4>
+              <div class="ref-formula">V = L × dI/dt</div>
+              <div class="ref-vals">Common: 10µH, 47µH, 100µH</div>
+            </div>
+            <div class="ref-card" onclick="qs('comp','Best MOSFET for 12V motor control from Arduino?')">
+              <h4>🔌 MOSFET</h4>
+              <div class="ref-formula">Rds(on) × I² = Power loss</div>
+              <div class="ref-vals">Logic-level: IRLZ44N, IRF3205</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -696,6 +786,7 @@ footer{text-align:center;padding:18px 0 10px;color:var(--text-dim);font-size:.66
             <button class="level-btn" onclick="setLevel('intermediate',this)">Intermediate</button>
             <button class="level-btn" onclick="setLevel('advanced',this)">Advanced</button>
           </div>
+          <button class="btn btn-sm" style="font-size:.62rem;color:var(--accent3);border-color:var(--accent3)" onclick="resetQuizStats()">↺ Reset</button>
           <button class="btn btn-sm" onclick="loadQuiz()">↺ New Question</button>
         </div>
         <div class="quiz-progress"><div class="quiz-progress-fill" id="quiz-prog" style="width:0%"></div></div>
@@ -723,6 +814,19 @@ footer{text-align:center;padding:18px 0 10px;color:var(--text-dim);font-size:.66
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TEMPLATES ═════════════════════════════════════════════════════════ -->
+<div id="tab-templates" class="tab-content">
+  <div class="workspace" style="grid-template-columns:1fr;">
+    <div class="panel">
+      <div class="panel-hdr"><span class="panel-title">// CIRCUIT TEMPLATES</span></div>
+      <div class="panel-body">
+        <p style="font-size:.78rem;color:var(--text-dim);margin-bottom:14px;">Click any template to auto-load it into the Schematic tab.</p>
+        <div class="tpl-grid" id="tpl-grid"></div>
       </div>
     </div>
   </div>
@@ -756,7 +860,21 @@ footer{text-align:center;padding:18px 0 10px;color:var(--text-dim);font-size:.66
   </div>
 </div>
 
-<footer>CIRCUIT COPILOT v4 · Groq LLaMA 3.3 70B · FastAPI · HuggingFace Spaces · Free & Open Source</footer>
+<!-- ═══ SHORTCUTS MODAL ═══════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="shortcuts-modal" onclick="if(event.target===this)toggleShortcuts()">
+  <div class="modal" style="position:relative">
+    <button class="close-modal" onclick="toggleShortcuts()">✕</button>
+    <h2>⌨️ Keyboard Shortcuts</h2>
+    <div class="shortcut-row"><span>Switch tabs</span><span class="shortcut-key"><kbd>1</kbd>–<kbd>0</kbd></span></div>
+    <div class="shortcut-row"><span>Save circuit</span><span class="shortcut-key"><kbd>Ctrl</kbd><kbd>S</kbd></span></div>
+    <div class="shortcut-row"><span>Export PDF</span><span class="shortcut-key"><kbd>Ctrl</kbd><kbd>E</kbd></span></div>
+    <div class="shortcut-row"><span>Submit input</span><span class="shortcut-key"><kbd>Ctrl</kbd><kbd>↵</kbd></span></div>
+    <div class="shortcut-row"><span>Toggle theme</span><span class="shortcut-key"><kbd>Ctrl</kbd><kbd>D</kbd></span></div>
+    <div class="shortcut-row"><span>Show shortcuts</span><span class="shortcut-key"><kbd>?</kbd></span></div>
+  </div>
+</div>
+
+<footer>CIRCUIT COPILOT v4 · Groq LLaMA 3.3 70B · FastAPI · <a href="https://github.com/smemon819/circuit-copilot" target="_blank">GitHub</a> · Free &amp; Open Source · Press <kbd style="background:var(--bg3);border:1px solid var(--border2);border-radius:3px;padding:1px 5px;font-family:'JetBrains Mono',monospace;font-size:.6rem;">?</kbd> for shortcuts</footer>
 </div><!-- .app -->
 
 <script>
@@ -771,8 +889,13 @@ const S = {
 };
 let pdfData={};
 
-// Quiz state
-let quiz = {score:0,total:0,streak:0,level:'beginner',history:[],current:null};
+// Quiz state — load from localStorage
+let quiz = JSON.parse(localStorage.getItem('cc_quiz')||'null') || {score:0,total:0,streak:0,level:'beginner',history:[],current:null};
+function saveQuiz(){localStorage.setItem('cc_quiz',JSON.stringify({score:quiz.score,total:quiz.total,streak:quiz.streak,level:quiz.level,history:quiz.history.slice(0,20)}));}
+function resetQuizStats(){quiz={score:0,total:0,streak:0,level:quiz.level,history:[],current:null};saveQuiz();updateQuizUI();document.getElementById('quiz-area').innerHTML='<div class="placeholder"><div class="placeholder-icon">🎯</div><p>Stats reset! Click "New Question" to start.</p></div>';}
+function updateQuizUI(){document.getElementById('quiz-score').textContent=`Score: ${quiz.score} / ${quiz.total}`;document.getElementById('stat-total').textContent=quiz.total;document.getElementById('stat-correct').textContent=quiz.score;document.getElementById('stat-acc').textContent=quiz.total?Math.round((quiz.score/quiz.total)*100)+'%':'—';document.getElementById('stat-streak').textContent=quiz.streak+(quiz.streak>=3?' 🔥':'');document.getElementById('quiz-prog').style.width=Math.min(100,quiz.total*10)+'%';document.getElementById('quiz-history').innerHTML=quiz.history.length?quiz.history.slice(0,8).map(h=>`${h.correct?'✅':'❌'} ${h.q}`).join('<br>'):'No questions yet.';}
+// Restore quiz UI on load
+setTimeout(updateQuizUI,100);
 
 // ── THEME ──────────────────────────────────────────────────────────────────
 function toggleTheme(){
@@ -1207,18 +1330,10 @@ function answerQuiz(idx){
   exp.className='quiz-explain';
   exp.innerHTML=(idx===q.ans?'✅ <strong>Correct!</strong> ':'❌ <strong>Incorrect.</strong> ')+q.exp;
   card.appendChild(exp);
-  // Update stats
-  document.getElementById('quiz-score').textContent=`Score: ${quiz.score} / ${quiz.total}`;
-  document.getElementById('stat-total').textContent=quiz.total;
-  document.getElementById('stat-correct').textContent=quiz.score;
-  document.getElementById('stat-acc').textContent=Math.round((quiz.score/quiz.total)*100)+'%';
-  document.getElementById('stat-streak').textContent=quiz.streak+(quiz.streak>=3?' 🔥':'');
-  // History
+  // Update stats + persist
   quiz.history.unshift({q:q.q.substring(0,40)+'...',correct:idx===q.ans});
-  document.getElementById('quiz-history').innerHTML=
-    quiz.history.slice(0,8).map(h=>`${h.correct?'✅':'❌'} ${h.q}`).join('<br>');
-  // Progress bar
-  document.getElementById('quiz-prog').style.width=Math.min(100,quiz.total*10)+'%';
+  updateQuizUI();
+  saveQuiz();
 }
 
 // ── SAVE/LOAD ─────────────────────────────────────────────────────────────
@@ -1292,6 +1407,109 @@ async function exportPDF(){
     a.download=(pdfData.project_name.replace(/\s+/g,'_')||'report')+'.pdf';a.click();
   }catch(e){alert('PDF error: '+e.message);}
 }
+
+// ── TEMPLATES ─────────────────────────────────────────────────────────────
+const TEMPLATES = [
+  {name:'Basic LED Circuit',icon:'💡',diff:'Beginner',color:'accent2',
+   desc:'Simple LED with current-limiting resistor powered by 9V battery.',
+   prompt:'LED circuit with a 220 ohm resistor and a 9V battery'},
+  {name:'Voltage Divider',icon:'📐',diff:'Beginner',color:'accent2',
+   desc:'Two resistors splitting voltage — fundamental building block.',
+   prompt:'Voltage divider with 10kΩ and 4.7kΩ resistors from 5V supply'},
+  {name:'555 Timer LED Blinker',icon:'⏱️',diff:'Intermediate',color:'accent',
+   desc:'Classic astable 555 timer circuit that blinks an LED at ~1Hz.',
+   prompt:'555 timer in astable mode blinking an LED at 1Hz with 9V battery'},
+  {name:'Arduino Temp Sensor',icon:'🌡️',diff:'Intermediate',color:'accent',
+   desc:'DHT11 temperature & humidity sensor connected to Arduino Uno.',
+   prompt:'Arduino Uno with DHT11 temperature sensor, 10kΩ pull-up resistor, and 16x2 LCD display'},
+  {name:'H-Bridge Motor Driver',icon:'⚙️',diff:'Advanced',color:'accent3',
+   desc:'Bidirectional DC motor control using 4 transistors or L298N module.',
+   prompt:'H-bridge motor driver using 4 NPN transistors for bidirectional DC motor control with 12V supply'},
+  {name:'RC Low-Pass Filter',icon:'〰️',diff:'Intermediate',color:'accent',
+   desc:'Passes low frequencies, attenuates high — audio and signal filtering.',
+   prompt:'RC low-pass filter with 10kΩ resistor and 100nF capacitor'},
+  {name:'NPN Transistor Switch',icon:'🔀',diff:'Beginner',color:'accent2',
+   desc:'Using a transistor to switch a high-power load from a microcontroller.',
+   prompt:'NPN transistor BC547 switching a 12V relay with 1kΩ base resistor from Arduino 5V pin'},
+  {name:'LDR Light Sensor',icon:'☀️',diff:'Beginner',color:'accent2',
+   desc:'Light-dependent resistor controlling an LED brightness.',
+   prompt:'LDR light sensor voltage divider with 10kΩ resistor, connected to Arduino analog pin A0, controlling LED on pin 9'}
+];
+
+function renderTemplates(){
+  const grid=document.getElementById('tpl-grid');
+  grid.innerHTML=TEMPLATES.map((t,i)=>`
+    <div class="tpl-card">
+      <h3>${t.icon} ${t.name}</h3>
+      <div class="tpl-meta"><span class="badge badge-${t.diff==='Beginner'?'ok':t.diff==='Intermediate'?'info':'warn'}">${t.diff}</span></div>
+      <p>${t.desc}</p>
+      <button class="btn btn-primary" style="width:100%" onclick="loadTemplate(${i})">⚡ Load Template</button>
+    </div>`).join('');
+}
+function loadTemplate(idx){
+  const t=TEMPLATES[idx];
+  document.getElementById('sch-input').value=t.prompt;
+  // Switch to schematic tab
+  const tabs=document.querySelectorAll('.tab');
+  switchTab('schematic',tabs[0]);
+  // Flash the input
+  const inp=document.getElementById('sch-input');
+  inp.style.borderColor='var(--accent2)';
+  setTimeout(()=>inp.style.borderColor='',1500);
+}
+setTimeout(renderTemplates,50);
+
+// ── COMPONENT REFERENCE TOGGLE ────────────────────────────────────────────
+function toggleRef(){
+  const el=document.getElementById('comp-ref');
+  const btn=document.getElementById('ref-toggle-btn');
+  if(el.style.display==='none'){el.style.display='block';btn.textContent='▼ Component Reference';}
+  else{el.style.display='none';btn.textContent='▶ Component Reference';}
+}
+
+// ── SHORTCUTS MODAL ───────────────────────────────────────────────────────
+function toggleShortcuts(){
+  const m=document.getElementById('shortcuts-modal');
+  m.classList.toggle('visible');
+}
+
+// ── KEYBOARD SHORTCUTS ────────────────────────────────────────────────────
+document.addEventListener('keydown',(e)=>{
+  // Don't trigger if user is typing in an input/textarea
+  const active=document.activeElement;
+  const isTyping=active&&(active.tagName==='TEXTAREA'||active.tagName==='INPUT');
+
+  // Ctrl+Enter to submit current active tab input
+  if(e.ctrlKey&&e.key==='Enter'){
+    e.preventDefault();
+    const activeTab=document.querySelector('.tab-content.active');
+    if(activeTab){const btn=activeTab.querySelector('.btn-primary');if(btn&&!btn.disabled) btn.click();}
+    return;
+  }
+  // Ctrl+S to save
+  if(e.ctrlKey&&e.key==='s'){e.preventDefault();saveCircuit();return;}
+  // Ctrl+E to export PDF
+  if(e.ctrlKey&&e.key==='e'){e.preventDefault();exportPDF();return;}
+  // Ctrl+D to toggle theme
+  if(e.ctrlKey&&e.key==='d'){e.preventDefault();toggleTheme();return;}
+
+  if(isTyping) return; // Below shortcuts only when not typing
+
+  // ? to show shortcuts
+  if(e.key==='?'){e.preventDefault();toggleShortcuts();return;}
+  // Escape to close modal
+  if(e.key==='Escape'){const m=document.getElementById('shortcuts-modal');if(m.classList.contains('visible')){toggleShortcuts();return;}}
+
+  // Number keys 1-0 for tab switching
+  const tabMap={'1':'schematic','2':'simulate','3':'waveform','4':'bom','5':'components',
+    '6':'debug','7':'arduino','8':'learn','9':'quiz','0':'templates'};
+  if(tabMap[e.key]){
+    e.preventDefault();
+    const tabs=document.querySelectorAll('.tab');
+    const idx=Object.keys(tabMap).indexOf(e.key);
+    if(tabs[idx]) switchTab(tabMap[e.key],tabs[idx]);
+  }
+});
 </script>
 </body>
 </html>
