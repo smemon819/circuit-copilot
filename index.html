@@ -1550,6 +1550,232 @@
     footer a:hover {
       text-decoration: underline;
     }
+
+
+
+    /* ── ONBOARDING TOUR ──────────────────────────────────────────────── */
+    .tour-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .65);
+      z-index: 300;
+      transition: opacity .3s;
+    }
+
+    .tour-spotlight {
+      position: absolute;
+      border-radius: 10px;
+      box-shadow: 0 0 0 4000px rgba(0, 0, 0, .6), 0 0 0 3px var(--accent), 0 0 20px var(--accent);
+      transition: all .4s ease;
+      z-index: 301;
+    }
+
+    .tour-tooltip {
+      position: absolute;
+      background: var(--panel);
+      border: 1px solid var(--accent);
+      border-radius: 10px;
+      padding: 16px 20px;
+      max-width: 320px;
+      z-index: 302;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, .5);
+    }
+
+    .tour-tooltip h3 {
+      font-size: .9rem;
+      color: var(--accent);
+      margin-bottom: 6px;
+    }
+
+    .tour-tooltip p {
+      font-size: .78rem;
+      color: var(--text);
+      line-height: 1.5;
+      margin-bottom: 12px;
+    }
+
+    .tour-tooltip .tour-btns {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .tour-tooltip .tour-btns button {
+      padding: 5px 14px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg3);
+      color: var(--text);
+      font-size: .72rem;
+      cursor: pointer;
+      font-family: 'Syne', sans-serif;
+    }
+
+    .tour-tooltip .tour-btns .tour-next {
+      background: var(--accent);
+      color: #000;
+      border-color: var(--accent);
+      font-weight: 700;
+    }
+
+    .tour-step-counter {
+      font-size: .64rem;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ── OHM'S LAW CALCULATOR ────────────────────────────────────────── */
+    .ohm-calc {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      margin-top: 12px;
+    }
+
+    .ohm-calc h4 {
+      font-size: .76rem;
+      color: var(--accent);
+      margin-bottom: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .ohm-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .ohm-field {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .ohm-field label {
+      font-size: .66rem;
+      color: var(--text-dim);
+      font-family: 'JetBrains Mono', monospace;
+      text-transform: uppercase;
+    }
+
+    .ohm-field input {
+      padding: 7px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--input-bg);
+      color: var(--text);
+      font-size: .82rem;
+      font-family: 'JetBrains Mono', monospace;
+      outline: none;
+      transition: border-color .2s;
+    }
+
+    .ohm-field input:focus {
+      border-color: var(--accent);
+    }
+
+    .ohm-field input.computed {
+      border-color: var(--accent2);
+      background: rgba(0, 240, 144, .05);
+    }
+
+    .ohm-result {
+      grid-column: 1/-1;
+      padding: 8px;
+      background: var(--bg3);
+      border-radius: 6px;
+      font-size: .74rem;
+      color: var(--accent2);
+      font-family: 'JetBrains Mono', monospace;
+      text-align: center;
+      min-height: 28px;
+    }
+
+    /* ── CIRCUIT HISTORY ─────────────────────────────────────────────── */
+    .history-section {
+      margin-top: 16px;
+      border-top: 1px solid var(--border);
+      padding-top: 12px;
+    }
+
+    .history-hdr {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .history-hdr h4 {
+      font-size: .72rem;
+      color: var(--accent);
+      font-family: 'JetBrains Mono', monospace;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .history-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 10px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-bottom: 5px;
+      transition: border-color .2s;
+      cursor: pointer;
+    }
+
+    .history-item:hover {
+      border-color: var(--accent);
+    }
+
+    .history-item-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .history-item-name {
+      font-size: .78rem;
+      font-weight: 600;
+      color: var(--text-hi);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .history-item-time {
+      font-size: .6rem;
+      color: var(--text-dim);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .history-del {
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      cursor: pointer;
+      font-size: .9rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .history-del:hover {
+      color: #ff6b6b;
+      background: rgba(255, 107, 107, .1);
+    }
+
+    /* ── CONFETTI CANVAS ─────────────────────────────────────────────── */
+    #confetti-canvas {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 400;
+    }
   </style>
 </head>
 
@@ -2011,6 +2237,28 @@
               <p>Explanations here</p>
             </div>
             <div id="learn-out" class="learn-output" style="display:none"></div>
+            <div class="ohm-calc">
+              <h4>⚡ Ohm's Law Calculator</h4>
+              <div class="ohm-grid">
+                <div class="ohm-field">
+                  <label>Voltage (V)</label>
+                  <input type="number" id="ohm-v" placeholder="—" step="any" oninput="calcOhm()">
+                </div>
+                <div class="ohm-field">
+                  <label>Current (A)</label>
+                  <input type="number" id="ohm-i" placeholder="—" step="any" oninput="calcOhm()">
+                </div>
+                <div class="ohm-field">
+                  <label>Resistance (Ω)</label>
+                  <input type="number" id="ohm-r" placeholder="—" step="any" oninput="calcOhm()">
+                </div>
+                <div class="ohm-field">
+                  <label>Power (W)</label>
+                  <input type="number" id="ohm-p" placeholder="—" step="any" readonly>
+                </div>
+                <div class="ohm-result" id="ohm-result">Enter any 2 values to calculate</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -2106,6 +2354,13 @@
                 <p>No circuits saved yet</p>
               </div>
             </div>
+            <div class="history-section">
+              <div class="history-hdr">
+                <h4>📋 Circuit History (Local)</h4>
+                <button class="btn btn-sm" onclick="clearCircuitHistory()" style="font-size:.6rem;">Clear All</button>
+              </div>
+              <div id="circuit-history"></div>
+            </div>
           </div>
         </div>
         <div class="panel">
@@ -2148,6 +2403,8 @@
         style="background:var(--bg3);border:1px solid var(--border2);border-radius:3px;padding:1px 5px;font-family:'JetBrains Mono',monospace;font-size:.6rem;">?</kbd>
       for shortcuts</footer>
   </div><!-- .app -->
+  <canvas id="confetti-canvas"></canvas>
+  <div id="tour-overlay"></div>
 
   <script>
     // ── STATE ──────────────────────────────────────────────────────────────────
@@ -3103,6 +3360,275 @@
       };
       sImg.src = img.src;
     }
+
+    // ── FEATURE 2: CHAT HISTORY PERSISTENCE ──────────────────────────────────
+    function saveChatHistory(chatId) {
+      const chat = document.getElementById(chatId);
+      if (!chat) return;
+      const msgs = Array.from(chat.querySelectorAll('.msg')).slice(-20).map(m => ({
+        role: m.classList.contains('user') ? 'user' : 'assistant',
+        html: m.innerHTML
+      }));
+      localStorage.setItem('cc_chat_' + chatId, JSON.stringify(msgs));
+    }
+    function restoreChatHistory(chatId) {
+      const saved = JSON.parse(localStorage.getItem('cc_chat_' + chatId) || '[]');
+      const chat = document.getElementById(chatId);
+      if (!chat || !saved.length) return;
+      saved.forEach(m => {
+        const d = document.createElement('div');
+        d.className = 'msg ' + m.role;
+        d.innerHTML = m.html;
+        chat.appendChild(d);
+      });
+      chat.scrollTop = chat.scrollHeight;
+    }
+    function clearChatHistory(chatId) {
+      const chat = document.getElementById(chatId);
+      if (chat) chat.innerHTML = '';
+      localStorage.removeItem('cc_chat_' + chatId);
+      showToast('🗑 Chat cleared');
+    }
+    // Patch appendMsg to auto-save
+    const _origAppendMsg = appendMsg;
+    appendMsg = function (chatId, role, content) {
+      _origAppendMsg(chatId, role, content);
+      saveChatHistory(chatId);
+    };
+    // Restore all chat histories on load
+    ['sch-chat', 'sim-chat', 'bom-chat', 'comp-chat', 'debug-chat', 'ard-chat', 'learn-chat'].forEach(id => restoreChatHistory(id));
+
+    // ── FEATURE 3: CIRCUIT HISTORY (localStorage) ──────────────────────────────
+    function getCircuitHistory() {
+      return JSON.parse(localStorage.getItem('cc_circuit_history') || '[]');
+    }
+    function addToCircuitHistory(title, schema) {
+      const history = getCircuitHistory();
+      history.unshift({
+        id: Date.now(),
+        title: title || 'Untitled',
+        schema: schema,
+        time: new Date().toLocaleString()
+      });
+      // Keep last 20
+      localStorage.setItem('cc_circuit_history', JSON.stringify(history.slice(0, 20)));
+      renderCircuitHistory();
+    }
+    function renderCircuitHistory() {
+      const el = document.getElementById('circuit-history');
+      if (!el) return;
+      const history = getCircuitHistory();
+      if (!history.length) {
+        el.innerHTML = '<p style="font-size:.72rem;color:var(--text-dim);text-align:center;padding:8px;">No circuit history yet</p>';
+        return;
+      }
+      el.innerHTML = history.map(h => `
+        <div class="history-item" onclick="loadFromHistory(${h.id})">
+          <div class="history-item-info">
+            <div class="history-item-name">⚡ ${h.title}</div>
+            <div class="history-item-time">${h.time}</div>
+          </div>
+          <button class="history-del" onclick="event.stopPropagation();deleteFromHistory(${h.id})" title="Delete">✕</button>
+        </div>`).join('');
+    }
+    function loadFromHistory(id) {
+      const h = getCircuitHistory().find(c => c.id === id);
+      if (!h) return;
+      S.sch.lastSchema = h.schema;
+      const input = document.getElementById('sch-input');
+      input.value = h.schema.title || h.title;
+      showToast('📋 Loaded: ' + h.title);
+      const tabs = document.querySelectorAll('.tab');
+      if (tabs[0]) switchTab('schematic', tabs[0]);
+    }
+    function deleteFromHistory(id) {
+      const history = getCircuitHistory().filter(c => c.id !== id);
+      localStorage.setItem('cc_circuit_history', JSON.stringify(history));
+      renderCircuitHistory();
+      showToast('🗑 Removed from history');
+    }
+    function clearCircuitHistory() {
+      localStorage.removeItem('cc_circuit_history');
+      renderCircuitHistory();
+      showToast('🗑 History cleared');
+    }
+    // Auto-add to history after schematic generation (patch runSchematic)
+    const _origRunSchematic = runSchematic;
+    window.runSchematic = async function () {
+      await _origRunSchematic();
+      if (S.sch.lastSchema) {
+        addToCircuitHistory(S.sch.lastSchema.title || document.getElementById('sch-input').value, S.sch.lastSchema);
+      }
+    };
+    // Render on load
+    setTimeout(renderCircuitHistory, 150);
+
+    // ── FEATURE 5: OHM'S LAW CALCULATOR ────────────────────────────────────────
+    function calcOhm() {
+      const vEl = document.getElementById('ohm-v');
+      const iEl = document.getElementById('ohm-i');
+      const rEl = document.getElementById('ohm-r');
+      const pEl = document.getElementById('ohm-p');
+      const res = document.getElementById('ohm-result');
+      const v = vEl.value !== '' ? parseFloat(vEl.value) : null;
+      const i = iEl.value !== '' ? parseFloat(iEl.value) : null;
+      const r = rEl.value !== '' ? parseFloat(rEl.value) : null;
+      // Reset computed styles
+      [vEl, iEl, rEl, pEl].forEach(el => el.classList.remove('computed'));
+      let cv = v, ci = i, cr = r, cp = null;
+      if (v !== null && i !== null) {
+        cr = i !== 0 ? v / i : Infinity;
+        cp = v * i;
+        rEl.value = cr === Infinity ? '∞' : cr.toFixed(4);
+        rEl.classList.add('computed');
+      } else if (v !== null && r !== null) {
+        ci = r !== 0 ? v / r : Infinity;
+        cp = v * ci;
+        iEl.value = ci === Infinity ? '∞' : ci.toFixed(6);
+        iEl.classList.add('computed');
+      } else if (i !== null && r !== null) {
+        cv = i * r;
+        cp = cv * i;
+        vEl.value = cv.toFixed(4);
+        vEl.classList.add('computed');
+      } else {
+        res.textContent = 'Enter any 2 values to calculate';
+        pEl.value = '';
+        return;
+      }
+      if (cp !== null) {
+        pEl.value = cp.toFixed(4);
+        pEl.classList.add('computed');
+      }
+      const formula = v !== null && i !== null ? 'V = I × R' : v !== null && r !== null ? 'I = V / R' : 'V = I × R';
+      res.textContent = `${formula}  ·  P = ${cp !== null ? cp.toFixed(2) + ' W' : '—'}`;
+    }
+
+    // ── FEATURE 6: QUIZ STREAK CONFETTI ──────────────────────────────────────
+    function fireConfetti() {
+      const canvas = document.getElementById('confetti-canvas');
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      const ctx = canvas.getContext('2d');
+      const particles = [];
+      const colors = ['#00c8f0', '#00f090', '#ff7043', '#a855f7', '#ffb300', '#ff69b4', '#00ff88'];
+      for (let i = 0; i < 80; i++) {
+        particles.push({
+          x: canvas.width / 2 + (Math.random() - .5) * 200,
+          y: canvas.height / 2,
+          vx: (Math.random() - .5) * 12,
+          vy: -Math.random() * 14 - 4,
+          size: Math.random() * 6 + 3,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          rotation: Math.random() * 360,
+          rotSpeed: (Math.random() - .5) * 10,
+          life: 1
+        });
+      }
+      let frame = 0;
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        let alive = false;
+        particles.forEach(p => {
+          if (p.life <= 0) return;
+          alive = true;
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 0.35;
+          p.rotation += p.rotSpeed;
+          p.life -= 0.012;
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.rotation * Math.PI / 180);
+          ctx.globalAlpha = p.life;
+          ctx.fillStyle = p.color;
+          ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * .4);
+          ctx.restore();
+        });
+        frame++;
+        if (alive && frame < 150) requestAnimationFrame(draw);
+        else ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+      requestAnimationFrame(draw);
+    }
+    // Patch answerQuiz to trigger confetti on streak >= 3
+    const _origAnswerQuiz = answerQuiz;
+    answerQuiz = function (idx) {
+      _origAnswerQuiz(idx);
+      if (quiz.streak >= 3 && idx === quiz.current?.ans) {
+        fireConfetti();
+        showToast(`🔥 ${quiz.streak} streak! Keep it up!`, 2500);
+      }
+    };
+
+    // ── FEATURE 4: ONBOARDING TOUR ──────────────────────────────────────────
+    const TOUR_STEPS = [
+      { target: '#sch-input', title: 'Describe Your Circuit', text: 'Type a circuit description in plain English — the AI will generate a schematic, simulation, and more!' },
+      { target: '.tabs', title: 'Explore Tabs', text: 'Switch between Schematic, Simulate, Waveform, BOM, Components, Debug, Arduino, Learn, Quiz, and Templates.' },
+      { target: '#tab-templates', title: 'Start from Templates', text: 'Don\'t know where to start? Pick a pre-built template and modify it!', tabSwitch: 'templates' },
+      { target: '#tab-quiz', title: 'Test Your Knowledge', text: 'Take the electronics quiz with 41 questions across 3 difficulty levels.', tabSwitch: 'quiz' },
+      { target: '.hdr-right', title: 'Status & Theme', text: 'Check API status and toggle dark/light mode. Your preference is saved!' },
+      { target: 'footer', title: 'Keyboard Shortcuts', text: 'Press ? anytime to see all keyboard shortcuts. Use number keys 1-0 to switch tabs!' }
+    ];
+    let tourStep = 0;
+    function startTour() {
+      if (localStorage.getItem('cc_tour_done')) return;
+      tourStep = 0;
+      showTourStep();
+    }
+    function showTourStep() {
+      const overlay = document.getElementById('tour-overlay');
+      if (tourStep >= TOUR_STEPS.length) {
+        overlay.innerHTML = '';
+        overlay.style.display = 'none';
+        localStorage.setItem('cc_tour_done', '1');
+        showToast('🎉 Tour complete! Enjoy Circuit Copilot!');
+        // Switch back to schematic tab
+        const tabs = document.querySelectorAll('.tab');
+        if (tabs[0]) switchTab('schematic', tabs[0]);
+        return;
+      }
+      const step = TOUR_STEPS[tourStep];
+      // Switch tab if needed
+      if (step.tabSwitch) {
+        const tabs = document.querySelectorAll('.tab');
+        const tabMap = { 'schematic': 0, 'simulate': 1, 'waveform': 2, 'bom': 3, 'components': 4, 'debug': 5, 'arduino': 6, 'learn': 7, 'quiz': 8, 'templates': 9 };
+        const idx = tabMap[step.tabSwitch];
+        if (tabs[idx]) switchTab(step.tabSwitch, tabs[idx]);
+      }
+      setTimeout(() => {
+        const target = document.querySelector(step.target);
+        if (!target) { tourStep++; showTourStep(); return; }
+        const rect = target.getBoundingClientRect();
+        overlay.style.display = 'block';
+        // Position tooltip below or above target
+        const tooltipY = rect.bottom + 12;
+        const tooltipX = Math.max(16, Math.min(rect.left, window.innerWidth - 340));
+        overlay.innerHTML = `
+          <div class="tour-overlay" onclick="skipTour()"></div>
+          <div class="tour-spotlight" style="top:${rect.top - 6}px;left:${rect.left - 6}px;width:${rect.width + 12}px;height:${rect.height + 12}px;"></div>
+          <div class="tour-tooltip" style="top:${tooltipY}px;left:${tooltipX}px;">
+            <div class="tour-step-counter">Step ${tourStep + 1} of ${TOUR_STEPS.length}</div>
+            <h3>${step.title}</h3>
+            <p>${step.text}</p>
+            <div class="tour-btns">
+              <button onclick="skipTour()">Skip</button>
+              <button class="tour-next" onclick="tourStep++;showTourStep()">${tourStep < TOUR_STEPS.length - 1 ? 'Next →' : 'Finish ✓'}</button>
+            </div>
+          </div>`;
+      }, step.tabSwitch ? 200 : 50);
+    }
+    function skipTour() {
+      const overlay = document.getElementById('tour-overlay');
+      overlay.innerHTML = '';
+      overlay.style.display = 'none';
+      localStorage.setItem('cc_tour_done', '1');
+      // Switch back to schematic tab
+      const tabs = document.querySelectorAll('.tab');
+      if (tabs[0]) switchTab('schematic', tabs[0]);
+    }
+    // Start tour on first visit (delay to let page render)
+    setTimeout(startTour, 800);
   </script>
 </body>
 
