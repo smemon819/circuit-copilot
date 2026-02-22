@@ -488,8 +488,10 @@ async def save_circuit(request: Request):
     if not supabase: return JSONResponse({"error":"Database not configured"}, status_code=500)
     body = await request.json()
     name = body.get("name","Untitled Circuit").strip() or "Untitled Circuit"
+    device_id = body.get("device_id", "unknown")
     saved_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     tech = {k: body.get(k) for k in ("schematic_image","schematic_description","components","simulation","arduino_code","bom")}
+    tech["device_id"] = device_id
     
     try:
         data = {
@@ -505,10 +507,13 @@ async def save_circuit(request: Request):
         return JSONResponse({"error": str(e)}, status_code=500)
 
 @app.get("/api/list-circuits")
-async def list_circuits():
+async def list_circuits(device_id: str = None):
     if not supabase: return JSONResponse({"circuits": []})
     try:
-        res = supabase.table("circuits").select("id,name,saved_at").order("id", desc=True).limit(50).execute()
+        query = supabase.table("circuits").select("id,name,saved_at")
+        if device_id:
+            query = query.eq("data->>device_id", device_id)
+        res = query.order("id", desc=True).limit(50).execute()
         return JSONResponse({"circuits": [{"id": str(r["id"]), "name": r["name"], "saved_at": r["saved_at"]} for r in res.data]})
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)

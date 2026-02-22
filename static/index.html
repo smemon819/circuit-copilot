@@ -3946,6 +3946,11 @@
     <script>
         // ── STATE ──────────────────────────────────────────────────────────────────
         let currentCid = null;
+        let deviceId = localStorage.getItem('cc_device_id');
+        if (!deviceId) {
+            deviceId = 'd_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
+            localStorage.setItem('cc_device_id', deviceId);
+        }
         let collabSocket = null;
         const S = {
             sch: { history: [], lastImage: null, lastSchema: null },
@@ -4738,6 +4743,7 @@
             const name = document.getElementById('project-name').value.trim() || 'Untitled Circuit';
             const is_public = confirm("🌐 Make this circuit PUBLIC in the Community Gallery?");
             const payload = {
+                device_id: deviceId,
                 name, is_public,
                 schematic_image: S.sch.lastImage,
                 schematic_description: document.getElementById('sch-desc').textContent || '',
@@ -4808,7 +4814,7 @@
 
         async function loadSavedList() {
             try {
-                const res = await fetch('/api/list-circuits');
+                const res = await fetch('/api/list-circuits?device_id=' + deviceId);
                 const data = await res.json();
                 const el = document.getElementById('saved-list');
                 if (!data.circuits.length) {
