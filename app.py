@@ -4,7 +4,8 @@ from typing import List, Dict
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from groq import Groq
+from groq import AsyncGroq
+import asyncio
 
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -372,41 +373,41 @@ def generate_pdf(data: dict) -> bytes:
     return buf.read()
 
 # ── LLM Helpers ────────────────────────────────────────────────────────────────
-def llm(system: str, messages: list, max_tokens: int = 1024) -> str:
-    r = client.chat.completions.create(
+async def llm(system: str, messages: list, max_tokens: int = 1024) -> str:
+    r = await client.chat.completions.create(
         model=GROQ_MODEL, max_tokens=max_tokens,
         messages=[{"role":"system","content":system}] + messages)
     return r.choices[0].message.content
 
 async def llm_stream(system: str, messages: list, max_tokens: int = 1024):
     """Async generator yielding SSE chunks."""
-    stream = client.chat.completions.create(
+    stream = await client.chat.completions.create(
         model=GROQ_MODEL, max_tokens=max_tokens, stream=True,
         messages=[{"role":"system","content":system}] + messages)
-    for chunk in stream:
+    async for chunk in stream:
         delta = chunk.choices[0].delta.content
         if delta:
             yield f"data: {json.dumps({'content': delta})}\n\n"
     yield "data: [DONE]\n\n"
 
-def llm_compound(system: str, messages: list, max_tokens: int = 1500) -> str:
+async def llm_compound(system: str, messages: list, max_tokens: int = 1500) -> str:
     """Call compound-beta with web_search tool for live data (prices, stock)."""
     try:
-        r = client.chat.completions.create(
+        r = await client.chat.completions.create(
             model=GROQ_AGENT_MODEL, max_tokens=max_tokens,
             messages=[{"role":"system","content":system}] + messages)
         return r.choices[0].message.content
     except Exception:
         # Fallback to standard model if compound-beta unavailable
-        return llm(system, messages, max_tokens)
+        return await llm(system, messages, max_tokens)
 
 async def llm_compound_stream(system: str, messages: list, max_tokens: int = 1500):
     """Streaming variant of compound-beta with graceful fallback."""
     try:
-        stream = client.chat.completions.create(
+        stream = await client.chat.completions.create(
             model=GROQ_AGENT_MODEL, max_tokens=max_tokens, stream=True,
             messages=[{"role":"system","content":system}] + messages)
-        for chunk in stream:
+        async for chunk in stream:
             delta = chunk.choices[0].delta.content
             if delta:
                 yield f"data: {json.dumps({'content': delta})}\n\n"
@@ -424,13 +425,13 @@ async def generate_schematic(request: Request):
     body = await request.json()
     prompt = body.get("prompt",""); history = body.get("history",[])
     if not prompt: return JSONResponse({"error":"No prompt"}, status_code=400)
-    raw = llm(SCHEMATIC_PROMPT, history+[{"role":"user","content":prompt}], 1600)
+    raw = await llm(SCHEMATIC_PROMPT, history+[{"role":"user","content":prompt}], 1600)
     m = re.search(r"\{.*\}", raw, re.DOTALL)
     if not m: return JSONResponse({"error":"Could not parse schematic JSON","raw":raw}, status_code=500)
     schema = json.loads(m.group())
     return JSONResponse({
         "schema": schema,
-        "image": render_schematic(schema),
+        "image": await asyncio.to_thread(render_schematic, schema),
         "description": schema.get("description",""),
         "title": schema.get("title",""),
         "difficulty": schema.get("difficulty",""),
@@ -449,7 +450,7 @@ async def image_to_circuit(request: Request):
     if not image_b64:
         return JSONResponse({"error":"No image provided"}, status_code=400)
     try:
-        resp = client.chat.completions.create(
+        resp = await client.chat.completions.create(
             model=GROQ_VISION_MODEL, max_tokens=1600,
             messages=[{"role":"user","content":[
                 {"type":"image_url","image_url":{"url":f"data:{image_type};base64,{image_b64}"}},
@@ -460,7 +461,7 @@ async def image_to_circuit(request: Request):
         if not m: return JSONResponse({"error":"Could not parse vision response","raw":raw}, status_code=500)
         schema = json.loads(m.group())
         return JSONResponse({
-            "schema": schema, "image": render_schematic(schema),
+            "schema": schema, "image": await asyncio.to_thread(render_schematic, schema),
             "description": schema.get("description",""),
             "title": schema.get("title","Identified Circuit"),
             "difficulty": schema.get("difficulty",""),
@@ -475,7 +476,7 @@ async def image_to_circuit(request: Request):
 @limiter.limit("10/minute")
 async def recommend_components(request: Request):
     body = await request.json()
-    result = llm_compound(COMPONENT_PROMPT, body.get("history",[])+[{"role":"user","content":body.get("prompt","")}], 1500)
+    result = await llm_compound(COMPONENT_PROMPT, body.get("history",[])+[{"role":"user","content":body.get("prompt","")}], 1500)
     return JSONResponse({"result": result, "model": "compound-beta"})
 
 @app.post("/api/components/stream")
@@ -490,7 +491,7 @@ async def components_stream(request: Request):
 @limiter.limit("10/minute")
 async def debug_circuit(request: Request):
     body = await request.json()
-    result = llm(DEBUG_PROMPT, body.get("history",[])+[{"role":"user","content":body.get("prompt","")}], 1200)
+    result = await llm(DEBUG_PROMPT, body.get("history",[])+[{"role":"user","content":body.get("prompt","")}], 1200)
     return JSONResponse({"result": result})
 
 @app.post("/api/debug/stream")
@@ -505,7 +506,7 @@ async def debug_stream(request: Request):
 @limiter.limit("10/minute")
 async def generate_arduino(request: Request):
     body = await request.json()
-    result = llm(ARDUINO_PROMPT, body.get("history",[])+[{"role":"user","content":body.get("prompt","")}], 2500)
+    result = await llm(ARDUINO_PROMPT, body.get("history",[])+[{"role":"user","content":body.get("prompt","")}], 2500)
     return JSONResponse({"result": result})
 
 @app.post("/api/arduino/stream")
@@ -520,7 +521,7 @@ async def arduino_stream(request: Request):
 @limiter.limit("10/minute")
 async def learn(request: Request):
     body = await request.json()
-    result = llm(LEARN_PROMPT, body.get("history",[])+[{"role":"user","content":body.get("prompt","")}], 1500)
+    result = await llm(LEARN_PROMPT, body.get("history",[])+[{"role":"user","content":body.get("prompt","")}], 1500)
     return JSONResponse({"result": result})
 
 @app.post("/api/learn/stream")
@@ -535,7 +536,7 @@ async def learn_stream(request: Request):
 @limiter.limit("5/minute")
 async def generate_breadboard(request: Request):
     body = await request.json()
-    raw = llm(BREADBOARD_PROMPT, body.get("history", []) + [{"role": "user", "content": "Schema: " + json.dumps(body.get("schema",{}))}], 1500)
+    raw = await llm(BREADBOARD_PROMPT, body.get("history", []) + [{"role": "user", "content": "Schema: " + json.dumps(body.get("schema",{}))}], 1500)
     m = re.search(r"\{.*\}", raw, re.DOTALL)
     if not m: return JSONResponse({"error":"Could not parse breadboard JSON","raw":raw}, status_code=500)
     return JSONResponse({"breadboard": json.loads(m.group())})
@@ -543,7 +544,7 @@ async def generate_breadboard(request: Request):
 @app.post("/api/simulate")
 async def simulate_circuit(request: Request):
     body = await request.json()
-    raw = llm(SIMULATION_PROMPT, body.get("history",[])+[{"role":"user","content":body.get("prompt","")}], 1500)
+    raw = await llm(SIMULATION_PROMPT, body.get("history",[])+[{"role":"user","content":body.get("prompt","")}], 1500)
     m = re.search(r"\{.*\}", raw, re.DOTALL)
     if not m: return JSONResponse({"error":"Could not parse simulation JSON"}, status_code=500)
     return JSONResponse({"simulation": json.loads(m.group())})
@@ -552,7 +553,7 @@ async def simulate_circuit(request: Request):
 @limiter.limit("10/minute")
 async def generate_bom(request: Request):
     body = await request.json()
-    raw = llm(BOM_PROMPT, body.get("history",[])+[{"role":"user","content":body.get("prompt","")}], 1500)
+    raw = await llm(BOM_PROMPT, body.get("history",[])+[{"role":"user","content":body.get("prompt","")}], 1500)
     m = re.search(r"\{.*\}", raw, re.DOTALL)
     if not m: return JSONResponse({"error":"Could not parse BOM JSON"}, status_code=500)
     return JSONResponse({"bom": json.loads(m.group())})
@@ -628,7 +629,7 @@ async def export_kicad(request: Request):
 @app.post("/api/export-pdf")
 async def export_pdf(request: Request):
     data = await request.json()
-    pdf_bytes = generate_pdf(data)
+    pdf_bytes = await asyncio.to_thread(generate_pdf, data)
     fname = data.get("project_name","circuit_report").replace(" ","_")+".pdf"
     return StreamingResponse(io.BytesIO(pdf_bytes), media_type="application/pdf",
                              headers={"Content-Disposition":f"attachment; filename={fname}"})
