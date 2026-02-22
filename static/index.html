@@ -3465,6 +3465,9 @@
                                 Copy</button>
                             <button class="btn btn-green" id="ard-dl" style="display:none" onclick="dlArduino()">↓
                                 .ino</button>
+                            <button class="btn btn-purple" id="ard-flash" style="display:none"
+                                onclick="flashToDevice()"><span style="animation:pulse 1.5s infinite">⚡</span>
+                                Flash</button>
                         </div>
                     </div>
                     <div class="panel-body">
@@ -4621,7 +4624,7 @@
             appendMsg(prefix + '-chat', 'assistant', fullText.substring(0, 160) + (fullText.length > 160 ? '...' : ''));
             if (prefix === 'ard') {
                 S.ard.lastCode = fullText; pdfData.arduino_code = fullText;
-                document.getElementById('ard-dl').style.display = 'inline-flex'; document.getElementById('ard-copy').style.display = 'inline-flex';
+                document.getElementById('ard-dl').style.display = 'inline-flex'; document.getElementById('ard-copy').style.display = 'inline-flex'; document.getElementById('ard-flash').style.display = 'inline-flex';
                 broadcastUpdate('arduino', fullText);
             }
             updateTabBadge(prefix, true);
@@ -5616,6 +5619,45 @@
                 readLoop();
             } catch (e) { showToast('❌ Serial Error: ' + e.message); }
         }
+        async function flashToDevice() {
+            if (!port) {
+                showToast('⚠ Please Connect Device (WebSerial) below first');
+                document.getElementById('btn-serial-connect').scrollIntoView({ behavior: 'smooth' });
+                return;
+            }
+            if (!S.ard.lastCode) return;
+
+            const btn = document.getElementById('ard-flash');
+            const orig = btn.innerHTML;
+            btn.innerHTML = '⏳ Flashing...';
+            btn.disabled = true;
+
+            try {
+                const encoder = new TextEncoder();
+                writer = port.writable.getWriter();
+                // Send standard Firmata/interpreter chunk header
+                await writer.write(encoder.encode("---BEGIN_FLASH---\n"));
+
+                // Chunk the payload to avoid serial buffer overflow
+                const code = S.ard.lastCode;
+                const chunkSize = 64;
+                for (let i = 0; i < code.length; i += chunkSize) {
+                    await writer.write(encoder.encode(code.slice(i, i + chunkSize)));
+                    await new Promise(r => setTimeout(r, 10)); // 10ms delay between chunks
+                }
+
+                await writer.write(encoder.encode("\n---END_FLASH---\n"));
+                writer.releaseLock();
+                showToast('✅ Flashed successfully across WebSerial!');
+            } catch (e) {
+                showToast('❌ Flash failed: ' + e.message);
+                if (writer) writer.releaseLock();
+            } finally {
+                btn.innerHTML = orig;
+                btn.disabled = false;
+            }
+        }
+
         async function readLoop() {
             const out = document.getElementById('serial-out');
             while (port?.readable) {
@@ -5752,7 +5794,7 @@
                     document.getElementById('ard-out').innerHTML = marked.parse(payload);
                     document.getElementById('ard-out').style.display = 'block';
                     document.getElementById('ard-ph').style.display = 'none';
-                    document.getElementById('ard-dl').style.display = 'inline-flex'; document.getElementById('ard-copy').style.display = 'inline-flex';
+                    document.getElementById('ard-dl').style.display = 'inline-flex'; document.getElementById('ard-copy').style.display = 'inline-flex'; document.getElementById('ard-flash').style.display = 'inline-flex';
                     showToast('💻 Code updated by collaborator');
                     break;
             }
@@ -6267,7 +6309,7 @@
                     if (outEl) { outEl.innerHTML = marked.parse(ardRes.value.result); outEl.style.display = 'block'; }
                     const phEl = document.getElementById('ard-ph');
                     if (phEl) phEl.style.display = 'none';
-                    document.getElementById('ard-dl').style.display = 'inline-flex'; document.getElementById('ard-copy').style.display = 'inline-flex';
+                    document.getElementById('ard-dl').style.display = 'inline-flex'; document.getElementById('ard-copy').style.display = 'inline-flex'; document.getElementById('ard-flash').style.display = 'inline-flex';
                     updateTabBadge('ard', true);
                 }
                 showToast('✅ All generated! Check each tab.');

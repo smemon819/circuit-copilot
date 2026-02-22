@@ -19,6 +19,7 @@ AI-powered circuit design assistant. Describe circuits in plain English → get 
 - **Schematic Generation:** Create interactive schematics from natural language prompts.
 - **Vision Support:** Upload an image of a circuit to have it analyzed and digitized.
 - **Interactive Simulations:** Real-time DC circuit simulations powered by Falstad.
+- **Hardware Bridge (WebSerial):** Flash generated code directly to your Arduino board directly from the browser, and read live device data using the integrated Serial Monitor.
 - **AI Breadboard Router:** Generate and visualize realistic breadboard wiring layouts mapped to a smart physical grid.
 - **Arduino Code & BOM:** Instantly generate microcontroller code and Bill of Materials.
 - **Learn & Quiz Modes:** Learn electronics concepts and test your knowledge with interactive quizzes.
