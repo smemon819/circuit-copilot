@@ -1,21 +1,10 @@
 import os, io, json, base64, re, datetime
 from typing import List, Dict
-import schemdraw
-import schemdraw.elements as elm
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
+
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from groq import Groq
-from reportlab.lib.pagesizes import A4
-from reportlab.lib import colors
-from reportlab.lib.units import mm
-from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer,
-                                 Image as RLImage, Table, TableStyle, HRFlowable)
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.enums import TA_CENTER
 
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -191,6 +180,12 @@ Output valid JSON only."""
 # ── Schematic PNG Renderer (used for PDF export & fallback) ───────────────────
 def render_schematic(schema: dict) -> str:
     try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        import schemdraw
+        import schemdraw.elements as elm
+
         components = schema.get("components", [])
         title      = schema.get("title", "Circuit")
         difficulty = schema.get("difficulty", "")
@@ -237,6 +232,10 @@ def render_schematic(schema: dict) -> str:
         return _fallback_schematic(schema, str(e))
 
 def _fallback_schematic(schema: dict, error: str) -> str:
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
     components = schema.get("components", [])
     title = schema.get("title", "Circuit")
     lines = [f"  {title}", "─"*44, schema.get("description",""), "", "Components:"]
@@ -290,6 +289,14 @@ def build_falstad_url(schema: dict) -> str:
 
 # ── PDF Export ─────────────────────────────────────────────────────────────────
 def generate_pdf(data: dict) -> bytes:
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib import colors
+    from reportlab.lib.units import mm
+    from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer,
+                                     Image as RLImage, Table, TableStyle, HRFlowable)
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER
+
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4,
                             leftMargin=20*mm, rightMargin=20*mm,
