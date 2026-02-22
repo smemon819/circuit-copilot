@@ -23,7 +23,7 @@ limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _custom_rate_limit_handler)
 client = AsyncGroq(api_key=os.environ.get("GROQ_API_KEY", ""))
-GROQ_MODEL        = "llama-3.3-70b-specdec"
+GROQ_MODEL        = "llama-3.3-70b-versatile"
 GROQ_VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
 GROQ_AGENT_MODEL  = "compound-beta"   # Agentic model with built-in web search
 
@@ -425,7 +425,12 @@ async def generate_schematic(request: Request):
     body = await request.json()
     prompt = body.get("prompt",""); history = body.get("history",[])
     if not prompt: return JSONResponse({"error":"No prompt"}, status_code=400)
-    raw = await llm(SCHEMATIC_PROMPT, history+[{"role":"user","content":prompt}], 1600)
+    
+    try:
+        raw = await llm(SCHEMATIC_PROMPT, history+[{"role":"user","content":prompt}], 1600)
+    except Exception as e:
+        return JSONResponse({"error": f"Groq API Error: {str(e)}"}, status_code=500)
+        
     m = re.search(r"\{.*\}", raw, re.DOTALL)
     if not m: return JSONResponse({"error":"Could not parse schematic JSON","raw":raw}, status_code=500)
     schema = json.loads(m.group())
