@@ -1,4 +1,4 @@
-import os, io, json, base64, re, datetime, sqlite3
+import os, io, json, base64, re, datetime
 from typing import List, Dict
 import schemdraw
 import schemdraw.elements as elm
@@ -23,17 +23,17 @@ GROQ_MODEL        = "llama-3.3-70b-versatile"
 GROQ_VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
 
 # ── Database ───────────────────────────────────────────────────────────────────
-# Use /data if available (HuggingFace persistent storage), else local
-import pathlib
-_data_dir = pathlib.Path("/data") if pathlib.Path("/data").exists() else pathlib.Path(".")
-DB_PATH = str(_data_dir / "circuits.db")
-def init_db():
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.execute("""CREATE TABLE IF NOT EXISTS circuits (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL, saved_at TEXT NOT NULL,
-            data TEXT NOT NULL, is_public INTEGER DEFAULT 0)""")
-init_db()
+from supabase import create_client, Client
+
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
+
+# Initialize Supabase client if credentials exist, otherwise None
+if SUPABASE_URL and SUPABASE_KEY:
+    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+else:
+    supabase = None
+    print("WARNING: Supabase credentials not found. Database features will be unavailable.")
 
 # ── WebSocket Collaboration ────────────────────────────────────────────────────
 class ConnectionManager:
@@ -467,28 +467,47 @@ async def generate_bom(request: Request):
 
 @app.post("/api/save-circuit")
 async def save_circuit(request: Request):
+    if not supabase: return JSONResponse({"error":"Database not configured"}, status_code=500)
     body = await request.json()
     name = body.get("name","Untitled Circuit").strip() or "Untitled Circuit"
     saved_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     tech = {k: body.get(k) for k in ("schematic_image","schematic_description","components","simulation","arduino_code","bom")}
-    with sqlite3.connect(DB_PATH) as conn:
-        cur = conn.execute("INSERT INTO circuits (name,saved_at,data,is_public) VALUES(?,?,?,?)",
-                           (name, saved_at, json.dumps(tech), 1 if body.get("is_public") else 0))
-    return JSONResponse({"id": str(cur.lastrowid), "name": name})
+    
+    try:
+        data = {
+            "name": name,
+            "saved_at": saved_at,
+            "data": tech,
+            "is_public": 1 if body.get("is_public") else 0,
+            "upvotes": 0
+        }
+        res = supabase.table("circuits").insert(data).execute()
+        return JSONResponse({"id": str(res.data[0]["id"]), "name": name})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 @app.get("/api/list-circuits")
 async def list_circuits():
-    with sqlite3.connect(DB_PATH) as conn:
-        rows = conn.execute("SELECT id,name,saved_at FROM circuits ORDER BY id DESC LIMIT 50").fetchall()
-    return JSONResponse({"circuits":[{"id":str(r[0]),"name":r[1],"saved_at":r[2]} for r in rows]})
+    if not supabase: return JSONResponse({"circuits": []})
+    try:
+        res = supabase.table("circuits").select("id,name,saved_at").order("id", desc=True).limit(50).execute()
+        return JSONResponse({"circuits": [{"id": str(r["id"]), "name": r["name"], "saved_at": r["saved_at"]} for r in res.data]})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 @app.get("/api/load-circuit/{cid}")
 async def load_circuit(cid: str):
-    with sqlite3.connect(DB_PATH) as conn:
-        row = conn.execute("SELECT name,saved_at,data FROM circuits WHERE id=?",(cid,)).fetchone()
-    if not row: return JSONResponse({"error":"Not found"},status_code=404)
-    data = json.loads(row[2]); data["name"]=row[0]; data["saved_at"]=row[1]
-    return JSONResponse(data)
+    if not supabase: return JSONResponse({"error":"Database not configured"}, status_code=404)
+    try:
+        res = supabase.table("circuits").select("name,saved_at,data").eq("id", cid).execute()
+        if not res.data: return JSONResponse({"error":"Not found"},status_code=404)
+        row = res.data[0]
+        data = row["data"]
+        data["name"] = row["name"]
+        data["saved_at"] = row["saved_at"]
+        return JSONResponse(data)
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 # gallery endpoint moved below with upvote support
 
@@ -540,30 +559,32 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 @app.post("/api/upvote/{cid}")
 async def upvote_circuit(cid: str):
     """Increment upvote count for a circuit."""
+    if not supabase: return JSONResponse({"error":"Database not configured"}, status_code=500)
     try:
-        with sqlite3.connect(DB_PATH) as conn:
-            # Add upvotes column if it doesn't exist
-            try:
-                conn.execute("ALTER TABLE circuits ADD COLUMN upvotes INTEGER DEFAULT 0")
-            except: pass
-            conn.execute("UPDATE circuits SET upvotes = COALESCE(upvotes,0) + 1 WHERE id = ?", (cid,))
-            row = conn.execute("SELECT upvotes FROM circuits WHERE id = ?", (cid,)).fetchone()
-        return JSONResponse({"id": cid, "upvotes": row[0] if row else 1})
+        res = supabase.table("circuits").select("upvotes").eq("id", cid).execute()
+        if not res.data: return JSONResponse({"error": "Not found"}, status_code=404)
+        
+        current_upvotes = res.data[0].get("upvotes", 0) or 0
+        new_upvotes = current_upvotes + 1
+        
+        upd = supabase.table("circuits").update({"upvotes": new_upvotes}).eq("id", cid).execute()
+        return JSONResponse({"id": cid, "upvotes": new_upvotes})
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
 
 
 @app.get("/api/gallery")
 async def get_gallery():
-    with sqlite3.connect(DB_PATH) as conn:
-        try: conn.execute("ALTER TABLE circuits ADD COLUMN upvotes INTEGER DEFAULT 0")
-        except: pass
-        rows = conn.execute(
-            "SELECT id,name,saved_at,data,COALESCE(upvotes,0) FROM circuits WHERE is_public=1 ORDER BY COALESCE(upvotes,0) DESC, id DESC LIMIT 30"
-        ).fetchall()
-    return JSONResponse({"gallery":[{
-        "id": str(r[0]), "name": r[1], "saved_at": r[2],
-        "image": json.loads(r[3]).get("schematic_image"),
-        "description": json.loads(r[3]).get("schematic_description",""),
-        "upvotes": r[4]
-    } for r in rows]})
+    if not supabase: return JSONResponse({"gallery": []})
+    try:
+        res = supabase.table("circuits").select("id,name,saved_at,data,upvotes").eq("is_public", 1).order("upvotes", desc=True).order("id", desc=True).limit(30).execute()
+        return JSONResponse({"gallery": [{
+            "id": str(r["id"]),
+            "name": r["name"],
+            "saved_at": r["saved_at"],
+            "image": r["data"].get("schematic_image"),
+            "description": r["data"].get("schematic_description", ""),
+            "upvotes": r["upvotes"] or 0
+        } for r in res.data]})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)

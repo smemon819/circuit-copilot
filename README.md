@@ -14,6 +14,9 @@ short_description: AI circuit design — schematics, simulation, Arduino code & 
 
 AI-powered circuit design. Describe in English → get schematics, simulation, BOM, Arduino code.
 
-**Set your `GROQ_API_KEY` in Space Secrets before running.**
+**Environment Variables (Set in Space Secrets or .env before running):**
+- `GROQ_API_KEY`: Required for AI content generation.
+- `SUPABASE_URL`: Required for saving circuits and the Community Gallery.
+- `SUPABASE_KEY`: Required for database authentication.
 
 See full README at: https://github.com/smemon819/circuit-copilot
