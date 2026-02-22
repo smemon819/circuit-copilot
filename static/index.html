@@ -6639,6 +6639,15 @@
                 btn.classList.remove('recording');
                 btn.title = 'Voice input';
                 if (voiceSession && voiceSession.inputId === inputId) voiceSession = null;
+
+                // Auto-submit feature for Hackathon (Iron Man mode)
+                if (input.value.trim().length > 0 && inputId === 'sch-input') {
+                    showToast('🎙️ Voice captured! Auto-generating circuit...');
+                    setTimeout(() => {
+                        if (typeof generateAll === 'function') generateAll();
+                        else runSchematic();
+                    }, 400);
+                }
             }
 
             recog.start();

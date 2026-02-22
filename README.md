@@ -15,6 +15,7 @@ short_description: AI circuit design — schematics, simulation, Arduino code & 
 AI-powered circuit design assistant. Describe circuits in plain English → get schematics, simulations, BOM, Arduino code, and more instantly.
 
 ## 🚀 Features
+- **Voice-to-Circuit:** Speak your circuit description naturally and watch it build itself instantaneously (hands-free Iron Man mode).
 - **Schematic Generation:** Create interactive schematics from natural language prompts.
 - **Vision Support:** Upload an image of a circuit to have it analyzed and digitized.
 - **Interactive Simulations:** Real-time DC circuit simulations powered by Falstad.
