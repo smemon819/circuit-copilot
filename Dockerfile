@@ -9,9 +9,9 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# Fix matplotlib config dir (HF runs as non-root)
+# Fix matplotlib config dir (HF runs as non-root user 1000)
 ENV MPLCONFIGDIR=/tmp/matplotlib
-RUN mkdir -p /tmp/matplotlib
+RUN mkdir -p /tmp/matplotlib && chmod 777 /tmp/matplotlib
 
 # Install Python deps first (better caching)
 COPY requirements.txt .
