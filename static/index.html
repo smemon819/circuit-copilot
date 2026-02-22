@@ -5368,25 +5368,61 @@
             document.getElementById('bb-instructions').innerHTML = '';
             document.getElementById('bb-loading').style.display = 'flex';
             try {
-                const componentList = (schema.components || []).map(c => `${c.label} (${c.type}, ${c.value})`).join(', ');
-                const res = await fetch('/api/debug', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ history: [], prompt: `Generate numbered breadboard wiring steps for this circuit: ${schema.title || 'Circuit'}.\nComponents: ${componentList}\nConnections: ${(schema.connections || []).map(c => `${c.from}→${c.to}`).join(', ')}\nFormat as numbered list, one step per line. Be specific about row/column positions.` })
+                const res = await fetch('/api/breadboard', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ history: [], schema: schema })
                 });
                 const data = await res.json();
-                const text = data.result || '';
-                const lines = text.split('\n').filter(l => /^\d+[\.\)]/.test(l.trim()));
+                if (data.error) throw new Error(data.error);
+
+                const bb = data.breadboard || {};
+                const steps = bb.steps || [];
+                const routing = bb.routing || [];
+
                 const out = document.getElementById('bb-instructions');
-                const stepsToShow = lines.length > 0 ? lines : text.split('\n').filter(l => l.trim().length > 10).slice(0, 12);
-                out.innerHTML = stepsToShow.map((s, i) => `
-          <div class="guide-step">
-            <span class="guide-num">#${i + 1}</span>
-            <span class="guide-txt">${s.replace(/^\d+[\.\)]\s*/, '')}</span>
-          </div>`).join('') || '<p style="color:var(--text-dim);font-size:.8rem">Generate a schematic first to see wiring steps.</p>';
+                out.innerHTML = steps.map((s, i) => `
+                    <div class="guide-step">
+                      <span class="guide-num">#${i + 1}</span>
+                      <span class="guide-txt">${s.replace(/^\d+[\.\)]\s*/, '')}</span>
+                    </div>`).join('') || '<p style="color:var(--text-dim);font-size:.8rem">No steps generated.</p>';
+
                 document.querySelectorAll('.bb-hole').forEach(h => h.classList.remove('active'));
-                for (let i = 0; i < 15; i++) { const h = document.getElementById(`bb-${Math.floor(Math.random() * 12)}-${Math.floor(Math.random() * 30)}`); if (h) h.classList.add('active'); }
+
+                const getHoleParams = (coord) => {
+                    if (!coord) return null;
+                    coord = coord.toLowerCase();
+                    // Maps exactly to our DOM grid structure
+                    if (coord.includes('top_+')) return { r: 0, c: Math.floor(Math.random() * 30) };
+                    if (coord.includes('top_-')) return { r: 1, c: Math.floor(Math.random() * 30) };
+                    if (coord.includes('bottom_+')) return { r: 10, c: Math.floor(Math.random() * 30) };
+                    if (coord.includes('bottom_-')) return { r: 11, c: Math.floor(Math.random() * 30) };
+
+                    const rMap = { 'a': 3, 'b': 4, 'c': 5, 'd': 6, 'e': 7, 'f': 8 };
+                    const rowChar = coord.charAt(0);
+                    const colNum = parseInt(coord.substring(1)) - 1; // 1-based to 0-based columns
+                    if (rMap[rowChar] !== undefined && colNum >= 0 && colNum < 30) {
+                        return { r: rMap[rowChar], c: colNum };
+                    }
+                    return null;
+                };
+
+                routing.forEach(rt => {
+                    const sParams = getHoleParams(rt.start);
+                    const eParams = getHoleParams(rt.end);
+
+                    if (sParams) {
+                        const h1 = document.getElementById(`bb-${sParams.r}-${sParams.c}`);
+                        if (h1) h1.classList.add('active');
+                    }
+                    if (eParams) {
+                        const h2 = document.getElementById(`bb-${eParams.r}-${eParams.c}`);
+                        if (h2) h2.classList.add('active');
+                    }
+                });
+
             } catch (e) {
-                document.getElementById('bb-instructions').innerHTML = '<p style="color:var(--text-dim)">Could not generate wiring guide.</p>';
+                document.getElementById('bb-instructions').innerHTML = '<p style="color:var(--warn)">Failed to generate AI breadboard routing.</p>';
             } finally { document.getElementById('bb-loading').style.display = 'none'; }
         }
 

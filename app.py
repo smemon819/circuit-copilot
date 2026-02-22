@@ -141,6 +141,29 @@ Format: one-sentence summary, then markdown sections:
 ## Common mistakes  ## Try it yourself
 Encourage, use analogies, avoid jargon. Audience: 16-year-olds."""
 
+BREADBOARD_PROMPT = """You are an expert electronics router.
+You will receive a JSON circuit schema. Your job is to map these components onto a standard half-size breadboard (30 columns).
+The breadboard has:
+- Top power rails: 'top_+' and 'top_-'
+- Bottom power rails: 'bottom_+' and 'bottom_-'
+- Main terminal strips: rows 'A'-'C' (top half) and 'D'-'F' (bottom half), columns 1 to 30.
+Output ONLY valid JSON matching this schema:
+{
+  "routing": [
+    {"id": "R1", "type": "resistor", "start": "B2", "end": "B6", "color": "#0090ff", "value": "1k\u03a9"},
+    {"id": "V1", "type": "battery", "start": "top_+", "end": "top_-", "color": "#ff3333", "value": "9V"},
+    {"id": "LED1", "type": "led", "start": "C6", "end": "top_-", "color": "#00f090", "value": "Red"},
+    {"id": "Wire1", "type": "wire", "start": "top_+", "end": "A2", "color": "#ff3333", "value": "Jumper"}
+  ],
+  "steps": [
+    "1. Connect Battery V1 positive to top + rail and negative to top - rail.",
+    "2. Place Resistor R1 from B2 to B6.",
+    "3. Insert LED1 anode at C6 and cathode to top - rail."
+  ]
+}
+Ensure connections physically make sense and match the schematic. Components must share columns to connect. Example: if R1 ends at column 6, LED1 must start at column 6 to be in series.
+Output valid JSON only. No markdown formatting."""
+
 IMAGE_CIRCUIT_PROMPT = """You are an expert electronics engineer with vision.
 Analyze this image (hand-drawn circuit, breadboard photo, or PCB).
 Identify all components and connections. Respond ONLY with valid JSON matching this schema:
@@ -463,8 +486,14 @@ async def learn(request: Request):
 async def learn_stream(request: Request):
     body = await request.json()
     return StreamingResponse(
-        llm_stream(LEARN_PROMPT, body.get("history",[])+[{"role":"user","content":body.get("prompt","")}], 1500),
-        media_type="text/event-stream", headers={"Cache-Control":"no-cache","X-Accel-Buffering":"no"})
+@app.post("/api/breadboard")
+@limiter.limit("5/minute")
+async def generate_breadboard(request: Request):
+    body = await request.json()
+    raw = llm(BREADBOARD_PROMPT, body.get("history", []) + [{"role": "user", "content": "Schema: " + json.dumps(body.get("schema",{}))}], 1500)
+    m = re.search(r"\{.*\}", raw, re.DOTALL)
+    if not m: return JSONResponse({"error":"Could not parse breadboard JSON","raw":raw}, status_code=500)
+    return JSONResponse({"breadboard": json.loads(m.group())})
 
 @app.post("/api/simulate")
 async def simulate_circuit(request: Request):
