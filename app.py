@@ -6,7 +6,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from groq import Groq
 from reportlab.lib.pagesizes import A4
@@ -21,12 +21,19 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
+async def _custom_rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    retry_after = int(exc.retry_after) if hasattr(exc, "retry_after") else 60
+    return JSONResponse(
+        {"error": "Rate limit exceeded", "retry_after": retry_after,
+         "message": f"Too many requests. Please wait {retry_after} seconds."},
+        status_code=429, headers={"Retry-After": str(retry_after)})
+
 app = FastAPI(title="Circuit Copilot v4")
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(RateLimitExceeded, _custom_rate_limit_handler)
 client = Groq(api_key=os.environ.get("GROQ_API_KEY", ""))
-GROQ_MODEL        = "llama-3.3-70b-versatile"
+GROQ_MODEL        = "llama-3.3-70b-specdec"
 GROQ_VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
 
 # ── Database ───────────────────────────────────────────────────────────────────
@@ -486,6 +493,9 @@ async def learn(request: Request):
 async def learn_stream(request: Request):
     body = await request.json()
     return StreamingResponse(
+        llm_stream(LEARN_PROMPT, body.get("history", []) + [{"role": "user", "content": body.get("prompt", "")}], 1500),
+        media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
 @app.post("/api/breadboard")
 @limiter.limit("5/minute")
 async def generate_breadboard(request: Request):
@@ -604,6 +614,10 @@ async def landing():
 @app.get("/app", response_class=HTMLResponse)
 async def main_app():
     with open("static/index.html", encoding="utf-8") as f: return f.read()
+
+@app.get("/sw.js")
+async def serve_sw():
+    return FileResponse("static/sw.js", media_type="application/javascript")
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
