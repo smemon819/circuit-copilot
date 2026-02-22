@@ -451,16 +451,7 @@
             border: 1px solid var(--border);
             border-radius: 11px;
             padding: 4px;
-            overflow-x: auto;
-            scroll-snap-type: x mandatory;
-        }
-
-        .tabs::-webkit-scrollbar {
-            height: 2px;
-        }
-
-        .tabs::-webkit-scrollbar-thumb {
-            background: var(--border2);
+            overflow: visible;
         }
 
         .tab {
@@ -481,7 +472,6 @@
             justify-content: center;
             gap: 5px;
             white-space: nowrap;
-            scroll-snap-align: start;
         }
 
         .tab:hover {
@@ -494,6 +484,70 @@
             color: var(--accent);
             border: 1px solid var(--border2);
             box-shadow: 0 0 14px rgba(0, 200, 240, .18);
+        }
+
+        /* Mega Menu Dropdown */
+        .tab-dropdown {
+            position: relative;
+            display: inline-block;
+            flex: 1;
+            min-width: 100px;
+        }
+
+        .tab-dropdown-btn {
+            width: 100%;
+            height: 100%;
+            padding: 8px 10px;
+            border: none;
+            border-radius: 8px;
+            background: transparent;
+            color: var(--text-dim);
+            font-family: 'Syne', sans-serif;
+            font-size: .74rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all .2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            white-space: nowrap;
+        }
+
+        .tab-dropdown:hover .tab-dropdown-btn,
+        .tab-dropdown-btn.active {
+            color: var(--text);
+            background: var(--bg3);
+        }
+
+        .tab-dropdown-content {
+            display: none;
+            position: absolute;
+            background: var(--bg2);
+            min-width: 200px;
+            box-shadow: var(--shadow);
+            z-index: 100;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            padding: 8px;
+            top: 100%;
+            right: 0;
+            margin-top: 4px;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .tab-dropdown:hover .tab-dropdown-content {
+            display: flex;
+            animation: fade-up 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .tab-dropdown-content .tab {
+            justify-content: flex-start;
+            text-align: left;
+            padding: 10px;
         }
 
         /* ── WORKSPACE ────────────────────────────────────────────────────────── */
@@ -2817,24 +2871,31 @@
                     class="tab-badge"></span></button>
             <button class="tab" onclick="switchTab('bom',this)"><span>🧾</span>BOM<span
                     class="tab-badge"></span></button>
-            <button class="tab" onclick="switchTab('components',this)"><span>🧩</span>Parts<span
-                    class="tab-badge"></span></button>
-            <button class="tab" onclick="switchTab('debug',this)"><span>🔍</span>Debug<span
-                    class="tab-badge"></span></button>
-            <button class="tab" onclick="switchTab('arduino',this)"><span>💻</span>Arduino<span
-                    class="tab-badge"></span></button>
-            <button class="tab" onclick="switchTab('learn',this)"><span>📚</span>Learn<span
-                    class="tab-badge"></span></button>
-            <button class="tab" onclick="switchTab('quiz',this)"><span>🎯</span>Quiz & Challenges<span
-                    class="tab-badge"></span></button>
-            <button class="tab" onclick="switchTab('templates',this)"><span>📋</span>Templates<span
-                    class="tab-badge"></span></button>
-            <button class="tab" onclick="switchTab('saved',this)"><span>🗂️</span>Saved<span
-                    class="tab-badge"></span></button>
-            <button class="tab" id="tab-btn-gallery" onclick="switchTab('gallery',this)"><span>🌍</span>Community<span
-                    class="tab-badge"></span></button>
-            <button class="tab" id="tab-btn-architect"
-                onclick="switchTab('architect',this)"><span>🧩</span>Architect<span class="tab-badge"></span></button>
+            <div class="tab-dropdown">
+                <button class="tab-dropdown-btn"><span>⚙️</span>More Tools ▾</button>
+                <div class="tab-dropdown-content">
+                    <button class="tab" onclick="switchTab('components',this)"><span>🧩</span>Parts<span
+                            class="tab-badge"></span></button>
+                    <button class="tab" onclick="switchTab('debug',this)"><span>🔍</span>Debug<span
+                            class="tab-badge"></span></button>
+                    <button class="tab" onclick="switchTab('arduino',this)"><span>💻</span>Arduino<span
+                            class="tab-badge"></span></button>
+                    <button class="tab" onclick="switchTab('learn',this)"><span>📚</span>Learn<span
+                            class="tab-badge"></span></button>
+                    <button class="tab" onclick="switchTab('quiz',this)"><span>🎯</span>Quiz & Challenges<span
+                            class="tab-badge"></span></button>
+                    <button class="tab" onclick="switchTab('templates',this)"><span>📋</span>Templates<span
+                            class="tab-badge"></span></button>
+                    <button class="tab" onclick="switchTab('saved',this)"><span>🗂️</span>Saved<span
+                            class="tab-badge"></span></button>
+                    <button class="tab" id="tab-btn-gallery"
+                        onclick="switchTab('gallery',this)"><span>🌍</span>Community<span
+                            class="tab-badge"></span></button>
+                    <button class="tab" id="tab-btn-architect"
+                        onclick="switchTab('architect',this)"><span>🧩</span>Architect<span
+                            class="tab-badge"></span></button>
+                </div>
+            </div>
         </div>
 
         <!-- ═══ DASHBOARD ════════════════════════════════════════════════════════ -->
