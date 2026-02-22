@@ -17,423 +17,343 @@ from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer,
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER
 
-app = FastAPI(title="Circuit Design Copilot v3")
+app = FastAPI(title="Circuit Copilot v4")
 client = Groq(api_key=os.environ.get("GROQ_API_KEY", ""))
-GROQ_MODEL = "llama-3.3-70b-versatile"
+GROQ_MODEL        = "llama-3.3-70b-versatile"
+GROQ_VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
 
-# SQLite Database Setup
-DB_PATH = "circuits.db"
-
+# ── Database ───────────────────────────────────────────────────────────────────
+# Use /data if available (HuggingFace persistent storage), else local
+import pathlib
+_data_dir = pathlib.Path("/data") if pathlib.Path("/data").exists() else pathlib.Path(".")
+DB_PATH = str(_data_dir / "circuits.db")
 def init_db():
     with sqlite3.connect(DB_PATH) as conn:
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS circuits (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                saved_at TEXT NOT NULL,
-                data TEXT NOT NULL,
-                is_public INTEGER DEFAULT 0
-            )
-        """)
+        conn.execute("""CREATE TABLE IF NOT EXISTS circuits (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL, saved_at TEXT NOT NULL,
+            data TEXT NOT NULL, is_public INTEGER DEFAULT 0)""")
 init_db()
 
-# --- REAL-TIME COLLABORATION MANAGER ---
+# ── WebSocket Collaboration ────────────────────────────────────────────────────
 class ConnectionManager:
     def __init__(self):
         self.active_connections: Dict[str, List[WebSocket]] = {}
-
-    async def connect(self, websocket: WebSocket, cid: str):
-        await websocket.accept()
-        if cid not in self.active_connections:
-            self.active_connections[cid] = []
-        self.active_connections[cid].append(websocket)
-
-    def disconnect(self, websocket: WebSocket, cid: str):
+    async def connect(self, ws: WebSocket, cid: str):
+        await ws.accept()
+        self.active_connections.setdefault(cid, []).append(ws)
+    def disconnect(self, ws: WebSocket, cid: str):
         if cid in self.active_connections:
-            self.active_connections[cid].remove(websocket)
-
-    async def broadcast(self, message: str, cid: str, sender: WebSocket):
-        if cid in self.active_connections:
-            for connection in self.active_connections[cid]:
-                if connection != sender:
-                    await connection.send_text(message)
-
+            self.active_connections[cid].remove(ws)
+    async def broadcast(self, msg: str, cid: str, sender: WebSocket):
+        for c in self.active_connections.get(cid, []):
+            if c != sender: await c.send_text(msg)
 manager = ConnectionManager()
 
 # ── System Prompts ─────────────────────────────────────────────────────────────
+SCHEMATIC_PROMPT = """You are an expert electronics engineer. When the user describes a circuit,
+respond with ONLY a JSON object — no markdown, no explanation.
 
-SCHEMATIC_PROMPT = """You are an expert electronics engineer specializing in circuit schematics.
-When the user describes a circuit, respond with a JSON object (and NOTHING else):
+The JSON MUST include x/y grid coordinates so the frontend can draw a proper schematic:
+- Battery/power → left side, orientation "up"
+- Series components → arranged left-to-right horizontally
+- Ground → bottom
+- Parallel branches → stacked vertically (different y values)
+- x/y are grid units (integers 0-8); keep layout compact and sensible
+
+Example for "LED with 220Ω resistor, 9V battery":
 {
   "components": [
-    {"id": "V1", "type": "battery", "value": "9V", "label": "V1"},
-    {"id": "R1", "type": "resistor", "value": "220Ω", "label": "R1"},
-    {"id": "LED1", "type": "led", "value": "2V/20mA", "label": "LED1"}
+    {"id":"V1","type":"battery","value":"9V","label":"V1","x":0,"y":1,"orientation":"up"},
+    {"id":"R1","type":"resistor","value":"220Ω","label":"R1","x":1,"y":0,"orientation":"right"},
+    {"id":"LED1","type":"led","value":"red","label":"LED1","x":2,"y":0,"orientation":"right"},
+    {"id":"GND1","type":"ground","value":"","label":"GND","x":2,"y":2,"orientation":"down"}
   ],
-  "connections": [
-    {"from": "V1+", "to": "R1.start"},
-    {"from": "R1.end", "to": "LED1.anode"},
-    {"from": "LED1.cathode", "to": "V1-"}
+  "connections":[
+    {"from":"V1.pos","to":"R1.start"},
+    {"from":"R1.end","to":"LED1.anode"},
+    {"from":"LED1.cathode","to":"GND1.top"},
+    {"from":"V1.neg","to":"GND1.top"}
   ],
-  "title": "Simple LED Circuit",
-  "description": "A basic LED circuit with current-limiting resistor to prevent burnout.",
-  "difficulty": "Beginner",
-  "use_case": "Learning, indicator lights, power indicators"
+  "nets":[
+    {"name":"VCC","nodes":["V1.pos","R1.start"]},
+    {"name":"MID","nodes":["R1.end","LED1.anode"]},
+    {"name":"GND","nodes":["LED1.cathode","V1.neg","GND1.top"]}
+  ],
+  "title":"LED Circuit",
+  "description":"Series LED circuit with current-limiting resistor. I = (9-2)/220 ≈ 31.8mA.",
+  "difficulty":"Beginner",
+  "use_case":"Indicators, learning circuits"
 }
-Supported types: resistor, capacitor, led, battery, switch, ground, diode, transistor, inductor, ic, potentiometer.
-Output valid JSON only — no markdown, no extra text."""
 
-COMPONENT_PROMPT = """You are an expert electronics component advisor in a multi-turn conversation.
-For each recommended component include:
-- Exact part name/number
-- Key specs (voltage, current, resistance, tolerance)
-- Why this component suits the requirement
-- Estimated cost (USD)
-- Where to buy (DigiKey, Mouser, Amazon)
-Use markdown with tables. Be beginner-friendly but technically precise."""
-
-DEBUG_PROMPT = """You are an expert circuit debugger in a multi-turn conversation.
-For each issue:
-1. Name the problem clearly
-2. Explain WHY (physics/safety)
-3. Give exact fix with values
-4. Rate: 🔴 Critical / 🟡 Warning / 🟢 Info
-Use markdown. If circuit looks correct, confirm and suggest optimizations."""
-
-ARDUINO_PROMPT = """You are an expert Arduino programmer in a multi-turn conversation.
-Generate complete upload-ready .ino code with:
-- #define pin constants at top
-- Comments on every block
-- Full setup() and loop()
-- Serial.begin(9600) for debugging
-- Required libraries: // Install: Library Manager → search "Name"
-After code, explain how it works in 3-5 sentences."""
-
-SIMULATION_PROMPT = """You are a circuit simulation expert. Perform DC operating point analysis.
-Respond ONLY with valid JSON:
-{
-  "circuit_title": "Circuit name",
-  "supply_voltage": 9,
-  "supply_unit": "V",
-  "nodes": [
-    {"id": "N1", "name": "V_supply", "voltage": 9.0, "unit": "V", "description": "Positive battery terminal"},
-    {"id": "N2", "name": "V_mid", "voltage": 2.35, "unit": "V", "description": "Junction after R1"},
-    {"id": "N3", "name": "GND", "voltage": 0.0, "unit": "V", "description": "Ground reference"}
-  ],
-  "branches": [
-    {"id": "B1", "name": "Loop current", "current": 30.7, "unit": "mA", "through": "R1, LED1", "description": "Series current"}
-  ],
-  "power": [
-    {"component": "R1", "power": 207.0, "unit": "mW", "status": "OK"},
-    {"component": "LED1", "power": 72.1, "unit": "mW", "status": "OK"},
-    {"component": "Battery", "power": 276.1, "unit": "mW", "status": "OK"}
-  ],
-  "summary": "Plain English analysis with recommendations.",
-  "warnings": ["Warning if any"]
-}
-LED forward voltage: red/yellow ~2V, blue/white ~3.2V. Output valid JSON only."""
-
-BOM_PROMPT = """You are an electronics procurement expert. Generate a complete Bill of Materials (BOM).
-Given a circuit description or component list, respond ONLY with valid JSON:
-{
-  "project_name": "Circuit name",
-  "total_cost_usd": 4.75,
-  "items": [
-    {
-      "ref": "R1",
-      "description": "Carbon Film Resistor",
-      "value": "220Ω",
-      "part_number": "CF14JT220R",
-      "quantity": 1,
-      "unit_cost": 0.10,
-      "total_cost": 0.10,
-      "supplier": "DigiKey",
-      "supplier_url": "https://www.digikey.com",
-      "package": "Through-hole axial",
-      "notes": "1/4W, 5% tolerance"
-    }
-  ],
-  "tools_needed": ["Breadboard", "Multimeter", "Wire stripper"],
-  "estimated_build_time": "30 minutes",
-  "difficulty": "Beginner"
-}
+Supported types: resistor, capacitor, led, battery, switch, ground, diode, transistor,
+inductor, ic, potentiometer, mosfet, op_amp, voltage_reg, buzzer, motor.
+orientation values: "right","left","up","down"
 Output valid JSON only."""
 
-LEARN_PROMPT = """You are a friendly electronics teacher explaining concepts to beginners.
-When asked to explain a circuit concept, component, or how something works, respond in this format:
+COMPONENT_PROMPT = """You are an expert electronics component advisor (multi-turn).
+For each component include: exact part number, key specs, why it fits, cost USD, supplier.
+Use markdown tables. Be beginner-friendly but technically precise."""
 
-Start with a one-sentence plain-English summary.
-Then use clear markdown sections:
-## How it works
-## The math (keep it simple, show the formula then plug in numbers)
-## Real-world analogy
-## Common mistakes to avoid
-## Try it yourself (simple experiment suggestion)
+DEBUG_PROMPT = """You are an expert circuit debugger (multi-turn).
+For each issue: name it, explain why (physics), give exact fix with values,
+rate 🔴Critical/🟡Warning/🟢Info. Use markdown."""
 
-Be encouraging, use analogies, avoid jargon. Aim for a 16-year-old audience."""
+ARDUINO_PROMPT = """You are an expert Arduino programmer (multi-turn).
+Generate complete upload-ready .ino code: #define pin constants, comments on every block,
+full setup()+loop(), Serial.begin(9600), required libraries noted.
+After code, explain in 3-5 sentences."""
 
-# ── Schematic Renderer ─────────────────────────────────────────────────────────
+SIMULATION_PROMPT = """You are a circuit simulation expert. Perform DC operating point analysis.
+Respond ONLY with valid JSON — no markdown, no explanation:
+{
+  "circuit_title":"name","supply_voltage":9,"supply_unit":"V",
+  "nodes":[{"id":"N1","name":"V_supply","voltage":9.0,"unit":"V","description":"..."}],
+  "branches":[{"id":"B1","name":"Loop","current":31.8,"unit":"mA","through":"R1,LED1","description":"..."}],
+  "power":[{"component":"R1","power":223,"unit":"mW","status":"OK"}],
+  "summary":"Plain English summary with key values and safety notes.",
+  "warnings":[]
+}"""
 
+BOM_PROMPT = """You are an electronics procurement expert. Respond ONLY with valid JSON:
+{
+  "project_name":"name","total_cost_usd":4.75,
+  "items":[{
+    "ref":"R1","description":"Carbon Film Resistor","value":"220Ω",
+    "part_number":"CF14JT220R","quantity":1,"unit_cost":0.10,"total_cost":0.10,
+    "supplier":"DigiKey","supplier_url":"https://www.digikey.com",
+    "package":"Through-hole axial","notes":"1/4W 5%"
+  }],
+  "tools_needed":["Breadboard","Multimeter"],
+  "estimated_build_time":"30 minutes","difficulty":"Beginner"
+}"""
+
+LEARN_PROMPT = """You are a friendly electronics teacher for beginners (multi-turn).
+Format: one-sentence summary, then markdown sections:
+## How it works  ## The math  ## Real-world analogy
+## Common mistakes  ## Try it yourself
+Encourage, use analogies, avoid jargon. Audience: 16-year-olds."""
+
+IMAGE_CIRCUIT_PROMPT = """You are an expert electronics engineer with vision.
+Analyze this image (hand-drawn circuit, breadboard photo, or PCB).
+Identify all components and connections. Respond ONLY with valid JSON matching this schema:
+{
+  "components":[{"id":"V1","type":"battery","value":"9V","label":"V1","x":0,"y":1,"orientation":"up"}],
+  "connections":[{"from":"V1.pos","to":"R1.start"}],
+  "nets":[{"name":"VCC","nodes":["V1.pos","R1.start"]}],
+  "title":"Identified Circuit",
+  "description":"What this circuit does.",
+  "difficulty":"Beginner","use_case":"...",
+  "confidence":"high",
+  "notes":"Any caveats about image quality or identification uncertainty."
+}
+Supported types: resistor,capacitor,led,battery,switch,ground,diode,transistor,inductor,ic,potentiometer,mosfet,op_amp.
+Output valid JSON only."""
+
+# ── Schematic PNG Renderer (used for PDF export & fallback) ───────────────────
 def render_schematic(schema: dict) -> str:
     try:
         components = schema.get("components", [])
-        title = schema.get("title", "Circuit Schematic")
+        title      = schema.get("title", "Circuit")
         difficulty = schema.get("difficulty", "")
-
-        fig, ax = plt.subplots(figsize=(10, 6), facecolor="#0a0f1a")
-        ax.set_facecolor("#0a0f1a")
-
+        fig, ax = plt.subplots(figsize=(11, 6.5), facecolor="#07090f")
+        ax.set_facecolor("#07090f")
         with schemdraw.Drawing(canvas=ax) as d:
-            d.config(fontsize=11, color="#c8d8e8", lw=1.8)
-            for comp in components:
-                ctype = comp.get("type", "").lower()
-                label = comp.get("label", "")
-                value = comp.get("value", "")
-                dl = f"{label}\n{value}" if value else label
-                if ctype == "resistor":
-                    d.add(elm.Resistor().right().label(dl, loc="top"))
-                elif ctype == "capacitor":
-                    d.add(elm.Capacitor().right().label(dl, loc="top"))
-                elif ctype == "led":
-                    d.add(elm.LED().right().label(dl, loc="top").color("#00ff88"))
-                elif ctype == "battery":
-                    d.add(elm.Battery().up().label(dl, loc="left"))
-                elif ctype == "switch":
-                    d.add(elm.Switch().right().label(dl, loc="top"))
-                elif ctype == "diode":
-                    d.add(elm.Diode().right().label(dl, loc="top"))
-                elif ctype == "ground":
-                    d.add(elm.Ground())
-                elif ctype == "transistor":
-                    d.add(elm.BjtNpn(circle=True).anchor("base").label(dl))
-                elif ctype == "inductor":
-                    d.add(elm.Inductor().right().label(dl, loc="top"))
-                elif ctype == "potentiometer":
-                    d.add(elm.Potentiometer().right().label(dl, loc="top"))
-                else:
-                    d.add(elm.Resistor().right().label(dl, loc="top"))
-            if len(components) > 1:
+            d.config(fontsize=11, color="#c8d8e8", lw=2.0)
+            batts  = [c for c in components if c.get("type")=="battery"]
+            series = [c for c in components if c.get("type") not in ("battery","ground")]
+            grnds  = [c for c in components if c.get("type")=="ground"]
+            def _elem(c):
+                t = c.get("type",""); lbl = c.get("label",""); val = c.get("value","")
+                dl = f"{lbl}\n{val}" if val else lbl
+                mapping = {
+                    "resistor":    elm.Resistor().right().label(dl, loc="top"),
+                    "capacitor":   elm.Capacitor().right().label(dl, loc="top"),
+                    "led":         elm.LED().right().label(dl, loc="top").color("#00ff88"),
+                    "battery":     elm.Battery().up().label(dl, loc="left"),
+                    "switch":      elm.Switch().right().label(dl, loc="top"),
+                    "diode":       elm.Diode().right().label(dl, loc="top"),
+                    "ground":      elm.Ground(),
+                    "transistor":  elm.BjtNpn(circle=True).anchor("base").label(dl),
+                    "inductor":    elm.Inductor().right().label(dl, loc="top"),
+                    "potentiometer": elm.Potentiometer().right().label(dl, loc="top"),
+                }
+                return mapping.get(t, elm.Resistor().right().label(dl, loc="top"))
+            for c in batts:  d.add(_elem(c))
+            for c in series: d.add(_elem(c))
+            if series and (batts or grnds):
                 d.add(elm.Line().down())
                 d.add(elm.Line().left())
-                d.add(elm.Line().up())
-
-        title_full = f"{title}  [{difficulty}]" if difficulty else title
-        ax.set_title(title_full, color="#00d4ff", fontsize=13,
+                if grnds: d.add(elm.Ground())
+                else:     d.add(elm.Line().up())
+        title_txt = f"{title}  [{difficulty}]" if difficulty else title
+        ax.set_title(title_txt, color="#00c8f0", fontsize=13,
                      fontweight="bold", fontfamily="monospace", pad=10)
         buf = io.BytesIO()
         plt.tight_layout()
-        plt.savefig(buf, format="png", dpi=160, bbox_inches="tight",
-                    facecolor="#0a0f1a", edgecolor="none")
-        plt.close()
-        buf.seek(0)
+        plt.savefig(buf, format="png", dpi=180, bbox_inches="tight",
+                    facecolor="#07090f", edgecolor="none")
+        plt.close(); buf.seek(0)
         return base64.b64encode(buf.read()).decode()
     except Exception as e:
         return _fallback_schematic(schema, str(e))
 
-
 def _fallback_schematic(schema: dict, error: str) -> str:
     components = schema.get("components", [])
-    title = schema.get("title", "Circuit Schematic")
+    title = schema.get("title", "Circuit")
     lines = [f"  {title}", "─"*44, schema.get("description",""), "", "Components:"]
     for c in components:
         lines.append(f"  [{c.get('type','?').upper():12s}]  {c.get('label','')}  {c.get('value','')}")
     lines += ["", "Connections:"]
     for cn in schema.get("connections", []):
         lines.append(f"  {cn.get('from','')}  →  {cn.get('to','')}")
-    fig, ax = plt.subplots(figsize=(9, max(4, len(lines)*0.32)), facecolor="#0a0f1a")
-    ax.set_facecolor("#0a0f1a"); ax.axis("off")
+    fig, ax = plt.subplots(figsize=(9, max(4, len(lines)*0.32)), facecolor="#07090f")
+    ax.set_facecolor("#07090f"); ax.axis("off")
     ax.text(0.04, 0.97, "\n".join(lines), transform=ax.transAxes,
             fontsize=10, color="#39d353", va="top", fontfamily="monospace", linespacing=1.5)
     buf = io.BytesIO()
-    plt.savefig(buf, format="png", dpi=150, bbox_inches="tight", facecolor="#0a0f1a")
+    plt.savefig(buf, format="png", dpi=150, bbox_inches="tight", facecolor="#07090f")
     plt.close(); buf.seek(0)
     return base64.b64encode(buf.read()).decode()
 
-
-# ── Falstad URL Builder ────────────────────────────────────────────────────────
-
+# ── Falstad URL ────────────────────────────────────────────────────────────────
 def build_falstad_url(schema: dict) -> str:
     try:
-        components = schema.get("components", [])
+        comps = schema.get("components", [])
         lines = ["$ 1 0.000005 10.235265340896002 50 5 43 5e-11"]
-        step = 96
-        for i, comp in enumerate(components):
-            ctype = comp.get("type","").lower()
-            vs = comp.get("value","1000").replace("Ω","").replace("V","").replace("mA","")
+        step = 112; cx, cy = 160, 160
+        batts  = [c for c in comps if c.get("type")=="battery"]
+        series = [c for c in comps if c.get("type") not in ("battery","ground","wire")]
+        def _val(comp):
+            vs = re.sub(r"[^\d.km]","", comp.get("value","1000").lower()) or "1000"
             try:
-                val = float(re.sub(r"[^\d.]","",vs) or "1000")
-                if "k" in vs.lower(): val *= 1000
-            except: val = 1000
-            x1,y1,x2,y2 = 48+i*step,48,48+(i+1)*step,48
-            if ctype=="resistor":   lines.append(f"r {x1} {y1} {x2} {y2} 0 {val}")
-            elif ctype=="capacitor":lines.append(f"c {x1} {y1} {x2} {y2} 0 {val/1e9} 0")
-            elif ctype=="led":      lines.append(f"d {x1} {y1} {x2} {y2} 2 default-led")
-            elif ctype=="battery":  lines.append(f"v {x1} {y2+step} {x1} {y1} 0 0 40 {val} 0 0 0.5")
-            elif ctype=="switch":   lines.append(f"s {x1} {y1} {x2} {y2} 0 0 false")
-            elif ctype=="diode":    lines.append(f"d {x1} {y1} {x2} {y2} 2 default")
-            else:                   lines.append(f"r {x1} {y1} {x2} {y2} 0 1000")
+                v = float(re.sub(r"[^\d.]","",vs) or "1000")
+                if "k" in vs: v *= 1000
+                if "m" in vs and comp.get("type") not in ("battery",): v /= 1000
+            except: v = 1000
+            return v
+        for b in batts:
+            v = _val(b)
+            lines.append(f"v {cx-step//2} {cy+step//2} {cx-step//2} {cy-step//2} 0 0 40 {v} 0 0 0.5")
+        for i, c in enumerate(series):
+            t = c.get("type","resistor"); v = _val(c)
+            x1 = cx + i*step; y1 = cy - step//2; x2 = x1 + step; y2 = y1
+            if t == "resistor":   lines.append(f"r {x1} {y1} {x2} {y2} 0 {v}")
+            elif t == "capacitor":lines.append(f"c {x1} {y1} {x2} {y2} 0 {v*1e-6} 0")
+            elif t == "led":      lines.append(f"d {x1} {y1} {x2} {y2} 2 default-led")
+            elif t == "diode":    lines.append(f"d {x1} {y1} {x2} {y2} 2 default")
+            elif t == "switch":   lines.append(f"s {x1} {y1} {x2} {y2} 0 1 false")
+            elif t == "inductor": lines.append(f"l {x1} {y1} {x2} {y2} 0 {v*1e-3}")
+            else:                 lines.append(f"r {x1} {y1} {x2} {y2} 0 1000")
         encoded = base64.b64encode("\n".join(lines).encode()).decode()
         return f"https://falstad.com/circuit/circuitjs.html?ctz={encoded}"
     except:
         return "https://falstad.com/circuit/circuitjs.html"
 
-
 # ── PDF Export ─────────────────────────────────────────────────────────────────
-
 def generate_pdf(data: dict) -> bytes:
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4,
                             leftMargin=20*mm, rightMargin=20*mm,
                             topMargin=20*mm, bottomMargin=20*mm)
     styles = getSampleStyleSheet()
-    def PS(name, **kw): return ParagraphStyle(name, parent=styles["Normal"], **kw)
-    title_s  = PS("T", fontSize=22, textColor=colors.HexColor("#003366"), spaceAfter=4, alignment=TA_CENTER, fontName="Helvetica-Bold")
-    sub_s    = PS("S", fontSize=10, textColor=colors.HexColor("#555555"), spaceAfter=12, alignment=TA_CENTER)
-    h2_s     = PS("H2", fontSize=13, textColor=colors.HexColor("#003366"), spaceBefore=14, spaceAfter=6, fontName="Helvetica-Bold")
-    body_s   = PS("B", fontSize=10, leading=15)
-    warn_s   = PS("W", fontSize=10, leading=14, textColor=colors.HexColor("#cc6600"), leftIndent=10)
-    code_s   = PS("C", fontSize=8, leading=11, backColor=colors.HexColor("#f4f4f4"), leftIndent=8, fontName="Courier")
-    footer_s = PS("F", fontSize=8, textColor=colors.HexColor("#999999"), alignment=TA_CENTER)
-
+    def PS(n, **kw): return ParagraphStyle(n, parent=styles["Normal"], **kw)
+    T  = PS("T",  fontSize=22, textColor=colors.HexColor("#003366"), spaceAfter=4,  alignment=TA_CENTER, fontName="Helvetica-Bold")
+    S  = PS("S",  fontSize=10, textColor=colors.HexColor("#555"),    spaceAfter=12, alignment=TA_CENTER)
+    H2 = PS("H2", fontSize=13, textColor=colors.HexColor("#003366"), spaceBefore=14,spaceAfter=6, fontName="Helvetica-Bold")
+    B  = PS("B",  fontSize=10, leading=15)
+    W  = PS("W",  fontSize=10, leading=14, textColor=colors.HexColor("#cc6600"), leftIndent=10)
+    C  = PS("C",  fontSize=8,  leading=11, fontName="Courier")
+    F  = PS("F",  fontSize=8,  textColor=colors.HexColor("#999"), alignment=TA_CENTER)
     story = []
     now = datetime.datetime.now().strftime("%B %d, %Y %H:%M")
-    story.append(Paragraph("⚡ Circuit Copilot", title_s))
-    story.append(Paragraph(f"AI-Powered Circuit Design Report · {now}", sub_s))
-    story.append(HRFlowable(width="100%", thickness=2, color=colors.HexColor("#003366")))
-    story.append(Spacer(1, 8*mm))
-
+    story += [Paragraph("⚡ Circuit Copilot", T),
+              Paragraph(f"AI-Powered Circuit Design Report · {now}", S),
+              HRFlowable(width="100%", thickness=2, color=colors.HexColor("#003366")),
+              Spacer(1, 8*mm)]
     if data.get("project_name"):
-        story.append(Paragraph(f"Project: {data['project_name']}", PS("pn", fontSize=14, textColor=colors.HexColor("#003366"), fontName="Helvetica-Bold")))
-        story.append(Spacer(1, 4*mm))
-
+        story += [Paragraph(f"Project: {data['project_name']}", PS("pn",fontSize=14,textColor=colors.HexColor("#003366"),fontName="Helvetica-Bold")),
+                  Spacer(1, 4*mm)]
     if data.get("schematic_image"):
-        story.append(Paragraph("Circuit Schematic", h2_s))
-        img_buf = io.BytesIO(base64.b64decode(data["schematic_image"]))
-        story.append(RLImage(img_buf, width=160*mm, height=90*mm))
+        story.append(Paragraph("Circuit Schematic", H2))
+        story.append(RLImage(io.BytesIO(base64.b64decode(data["schematic_image"])), width=160*mm, height=90*mm))
         story.append(Spacer(1, 4*mm))
     if data.get("schematic_description"):
-        story.append(Paragraph(data["schematic_description"], body_s))
-        story.append(Spacer(1, 6*mm))
-
+        story += [Paragraph(data["schematic_description"], B), Spacer(1, 6*mm)]
     if data.get("bom"):
         bom = data["bom"]
-        story.append(Paragraph("Bill of Materials", h2_s))
-        rows = [["Ref","Description","Value","Qty","Unit Cost","Total","Supplier"]]
-        for item in bom.get("items",[]):
-            rows.append([
-                item.get("ref",""), item.get("description",""),
-                item.get("value",""), str(item.get("quantity",1)),
-                f"${item.get('unit_cost',0):.2f}", f"${item.get('total_cost',0):.2f}",
-                item.get("supplier","")
-            ])
-        rows.append(["","","","","TOTAL", f"${bom.get('total_cost_usd',0):.2f}",""])
-        t = Table(rows, colWidths=[15*mm,45*mm,22*mm,10*mm,20*mm,20*mm,28*mm])
+        story.append(Paragraph("Bill of Materials", H2))
+        rows = [["Ref","Description","Value","Qty","Unit $","Total","Supplier"]]
+        for it in bom.get("items",[]):
+            rows.append([it.get("ref",""),it.get("description",""),it.get("value",""),
+                         str(it.get("quantity",1)),f"${it.get('unit_cost',0):.2f}",
+                         f"${it.get('total_cost',0):.2f}",it.get("supplier","")])
+        rows.append(["","","","","TOTAL",f"${bom.get('total_cost_usd',0):.2f}",""])
+        t = Table(rows, colWidths=[15*mm,45*mm,22*mm,10*mm,18*mm,18*mm,32*mm])
         t.setStyle(TableStyle([
-            ("BACKGROUND",(0,0),(-1,0),colors.HexColor("#003366")),
-            ("TEXTCOLOR",(0,0),(-1,0),colors.white),
-            ("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),
-            ("BACKGROUND",(0,-1),(-1,-1),colors.HexColor("#e8f0fe")),
-            ("FONTNAME",(0,-1),(-1,-1),"Helvetica-Bold"),
-            ("FONTSIZE",(0,0),(-1,-1),8),
+            ("BACKGROUND",(0,0),(-1,0),colors.HexColor("#003366")),("TEXTCOLOR",(0,0),(-1,0),colors.white),
+            ("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),("FONTSIZE",(0,0),(-1,-1),8),
+            ("BACKGROUND",(0,-1),(-1,-1),colors.HexColor("#e8f0fe")),("FONTNAME",(0,-1),(-1,-1),"Helvetica-Bold"),
             ("ROWBACKGROUNDS",(0,1),(-1,-2),[colors.HexColor("#f0f4ff"),colors.white]),
-            ("GRID",(0,0),(-1,-1),0.4,colors.HexColor("#cccccc")),
-            ("ALIGN",(3,0),(-1,-1),"CENTER"),
-            ("PADDING",(0,0),(-1,-1),5),
+            ("GRID",(0,0),(-1,-1),0.4,colors.HexColor("#ccc")),("PADDING",(0,0),(-1,-1),5),
         ]))
-        story.append(t)
-        if bom.get("tools_needed"):
-            story.append(Spacer(1,4*mm))
-            story.append(Paragraph("Tools needed: " + ", ".join(bom["tools_needed"]), body_s))
-        if bom.get("estimated_build_time"):
-            story.append(Paragraph(f"Estimated build time: {bom['estimated_build_time']}", body_s))
-        story.append(Spacer(1, 6*mm))
-
-    if data.get("components") and not data.get("bom"):
-        story.append(Paragraph("Component List", h2_s))
-        rows = [["ID","Type","Value","Label"]]
-        for c in data["components"]:
-            rows.append([c.get("id",""), c.get("type","").capitalize(), c.get("value","—"), c.get("label","")])
-        t = Table(rows, colWidths=[25*mm,40*mm,40*mm,40*mm])
-        t.setStyle(TableStyle([
-            ("BACKGROUND",(0,0),(-1,0),colors.HexColor("#003366")),
-            ("TEXTCOLOR",(0,0),(-1,0),colors.white),
-            ("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),
-            ("FONTSIZE",(0,0),(-1,-1),9),
-            ("ROWBACKGROUNDS",(0,1),(-1,-1),[colors.HexColor("#f0f4ff"),colors.white]),
-            ("GRID",(0,0),(-1,-1),0.5,colors.HexColor("#cccccc")),
-            ("ALIGN",(0,0),(-1,-1),"CENTER"),
-            ("PADDING",(0,0),(-1,-1),6),
-        ]))
-        story.append(t)
-        story.append(Spacer(1,6*mm))
-
+        story += [t, Spacer(1, 6*mm)]
     if data.get("simulation"):
         sim = data["simulation"]
-        story.append(Paragraph("Simulation Results", h2_s))
-        story.append(Paragraph(sim.get("summary",""), body_s))
-        story.append(Spacer(1,4*mm))
+        story.append(Paragraph("Simulation Results", H2))
+        story += [Paragraph(sim.get("summary",""), B), Spacer(1,4*mm)]
         if sim.get("nodes"):
-            node_rows = [["Node","Voltage","Description"]]
-            for n in sim["nodes"]:
-                node_rows.append([n.get("name",""), f"{n.get('voltage',0)} {n.get('unit','V')}", n.get("description","")])
-            nt = Table(node_rows, colWidths=[40*mm,30*mm,100*mm])
+            nr = [["Node","Voltage","Description"]]
+            for n in sim["nodes"]: nr.append([n.get("name",""),f"{n.get('voltage',0)} {n.get('unit','V')}",n.get("description","")])
+            nt = Table(nr, colWidths=[40*mm,30*mm,100*mm])
             nt.setStyle(TableStyle([
-                ("BACKGROUND",(0,0),(-1,0),colors.HexColor("#005588")),
-                ("TEXTCOLOR",(0,0),(-1,0),colors.white),
-                ("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),
-                ("FONTSIZE",(0,0),(-1,-1),9),
+                ("BACKGROUND",(0,0),(-1,0),colors.HexColor("#005588")),("TEXTCOLOR",(0,0),(-1,0),colors.white),
+                ("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),("FONTSIZE",(0,0),(-1,-1),9),
                 ("ROWBACKGROUNDS",(0,1),(-1,-1),[colors.HexColor("#eef6ff"),colors.white]),
-                ("GRID",(0,0),(-1,-1),0.5,colors.HexColor("#cccccc")),
-                ("PADDING",(0,0),(-1,-1),5),
+                ("GRID",(0,0),(-1,-1),0.5,colors.HexColor("#ccc")),("PADDING",(0,0),(-1,-1),5),
             ]))
-            story.append(nt)
-            story.append(Spacer(1,4*mm))
-        if sim.get("warnings"):
-            story.append(Paragraph("⚠ Warnings", PS("wh", fontSize=11, textColor=colors.HexColor("#cc6600"), fontName="Helvetica-Bold")))
-            for w in sim["warnings"]:
-                story.append(Paragraph(f"• {w}", warn_s))
-            story.append(Spacer(1,4*mm))
-
+            story += [nt, Spacer(1,4*mm)]
+        for w in sim.get("warnings",[]): story.append(Paragraph(f"⚠ {w}", W))
     if data.get("arduino_code"):
-        story.append(Paragraph("Arduino Code", h2_s))
+        story.append(Paragraph("Arduino Code", H2))
         code = data["arduino_code"]
         m = re.search(r"```(?:cpp|arduino|ino)?\n([\s\S]*?)```", code)
-        clean = m.group(1) if m else code
-        for line in clean[:3000].split("\n"):
-            story.append(Paragraph(line.replace(" ","&nbsp;").replace("<","&lt;") or "&nbsp;", code_s))
-        story.append(Spacer(1,4*mm))
-
-    story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#cccccc")))
-    story.append(Spacer(1,3*mm))
-    story.append(Paragraph("Generated by Circuit Copilot v3 · Powered by Groq LLaMA 3.3 70B · Free & Open Source", footer_s))
+        for line in (m.group(1) if m else code)[:3000].split("\n"):
+            story.append(Paragraph(line.replace(" ","&nbsp;").replace("<","&lt;") or "&nbsp;", C))
+    story += [HRFlowable(width="100%",thickness=1,color=colors.HexColor("#ccc")),Spacer(1,3*mm),
+              Paragraph("Generated by Circuit Copilot v4 · Powered by Groq LLaMA 3.3 70B · github.com/smemon819/circuit-copilot", F)]
     doc.build(story)
     buf.seek(0)
     return buf.read()
 
-
-# ── LLM Helper ─────────────────────────────────────────────────────────────────
-
+# ── LLM Helpers ────────────────────────────────────────────────────────────────
 def llm(system: str, messages: list, max_tokens: int = 1024) -> str:
-    resp = client.chat.completions.create(
+    r = client.chat.completions.create(
         model=GROQ_MODEL, max_tokens=max_tokens,
-        messages=[{"role":"system","content":system}] + messages
-    )
-    return resp.choices[0].message.content
+        messages=[{"role":"system","content":system}] + messages)
+    return r.choices[0].message.content
 
+async def llm_stream(system: str, messages: list, max_tokens: int = 1024):
+    """Async generator yielding SSE chunks."""
+    stream = client.chat.completions.create(
+        model=GROQ_MODEL, max_tokens=max_tokens, stream=True,
+        messages=[{"role":"system","content":system}] + messages)
+    for chunk in stream:
+        delta = chunk.choices[0].delta.content
+        if delta:
+            yield f"data: {json.dumps({'content': delta})}\n\n"
+    yield "data: [DONE]\n\n"
 
 # ── API Routes ─────────────────────────────────────────────────────────────────
 
 @app.post("/api/schematic")
 async def generate_schematic(request: Request):
     body = await request.json()
-    user_input = body.get("prompt","")
-    history = body.get("history",[])
-    if not user_input:
-        return JSONResponse({"error":"No prompt"}, status_code=400)
-    raw = llm(SCHEMATIC_PROMPT, history + [{"role":"user","content":user_input}], 1200)
+    prompt = body.get("prompt",""); history = body.get("history",[])
+    if not prompt: return JSONResponse({"error":"No prompt"}, status_code=400)
+    raw = llm(SCHEMATIC_PROMPT, history+[{"role":"user","content":prompt}], 1600)
     m = re.search(r"\{.*\}", raw, re.DOTALL)
-    if not m:
-        return JSONResponse({"error":"Could not parse schematic JSON","raw":raw}, status_code=500)
+    if not m: return JSONResponse({"error":"Could not parse schematic JSON","raw":raw}, status_code=500)
     schema = json.loads(m.group())
     return JSONResponse({
         "schema": schema,
@@ -446,191 +366,204 @@ async def generate_schematic(request: Request):
         "assistant_message": f"{schema.get('title','Circuit')}: {schema.get('description','')}"
     })
 
+@app.post("/api/image-to-circuit")
+async def image_to_circuit(request: Request):
+    """Vision endpoint: base64 image → identified circuit schema."""
+    body = await request.json()
+    image_b64  = body.get("image","")
+    image_type = body.get("type","image/jpeg")
+    if not image_b64:
+        return JSONResponse({"error":"No image provided"}, status_code=400)
+    try:
+        resp = client.chat.completions.create(
+            model=GROQ_VISION_MODEL, max_tokens=1600,
+            messages=[{"role":"user","content":[
+                {"type":"image_url","image_url":{"url":f"data:{image_type};base64,{image_b64}"}},
+                {"type":"text","text":IMAGE_CIRCUIT_PROMPT}
+            ]}])
+        raw = resp.choices[0].message.content
+        m = re.search(r"\{.*\}", raw, re.DOTALL)
+        if not m: return JSONResponse({"error":"Could not parse vision response","raw":raw}, status_code=500)
+        schema = json.loads(m.group())
+        return JSONResponse({
+            "schema": schema, "image": render_schematic(schema),
+            "description": schema.get("description",""),
+            "title": schema.get("title","Identified Circuit"),
+            "difficulty": schema.get("difficulty",""),
+            "confidence": schema.get("confidence","medium"),
+            "notes": schema.get("notes",""),
+            "falstad_url": build_falstad_url(schema),
+        })
+    except Exception as e:
+        return JSONResponse({"error": f"Vision error: {str(e)}"}, status_code=500)
 
 @app.post("/api/components")
 async def recommend_components(request: Request):
     body = await request.json()
-    history = body.get("history",[])
-    result = llm(COMPONENT_PROMPT, history+[{"role":"user","content":body.get("prompt","")}], 1200)
+    result = llm(COMPONENT_PROMPT, body.get("history",[])+[{"role":"user","content":body.get("prompt","")}], 1200)
     return JSONResponse({"result": result})
 
+@app.post("/api/components/stream")
+async def components_stream(request: Request):
+    body = await request.json()
+    return StreamingResponse(
+        llm_stream(COMPONENT_PROMPT, body.get("history",[])+[{"role":"user","content":body.get("prompt","")}], 1200),
+        media_type="text/event-stream", headers={"Cache-Control":"no-cache","X-Accel-Buffering":"no"})
 
 @app.post("/api/debug")
 async def debug_circuit(request: Request):
     body = await request.json()
-    history = body.get("history",[])
-    result = llm(DEBUG_PROMPT, history+[{"role":"user","content":body.get("prompt","")}], 1200)
+    result = llm(DEBUG_PROMPT, body.get("history",[])+[{"role":"user","content":body.get("prompt","")}], 1200)
     return JSONResponse({"result": result})
 
+@app.post("/api/debug/stream")
+async def debug_stream(request: Request):
+    body = await request.json()
+    return StreamingResponse(
+        llm_stream(DEBUG_PROMPT, body.get("history",[])+[{"role":"user","content":body.get("prompt","")}], 1200),
+        media_type="text/event-stream", headers={"Cache-Control":"no-cache","X-Accel-Buffering":"no"})
 
 @app.post("/api/arduino")
 async def generate_arduino(request: Request):
     body = await request.json()
-    history = body.get("history",[])
-    result = llm(ARDUINO_PROMPT, history+[{"role":"user","content":body.get("prompt","")}], 2500)
+    result = llm(ARDUINO_PROMPT, body.get("history",[])+[{"role":"user","content":body.get("prompt","")}], 2500)
     return JSONResponse({"result": result})
 
-
-@app.post("/api/simulate")
-async def simulate_circuit(request: Request):
+@app.post("/api/arduino/stream")
+async def arduino_stream(request: Request):
     body = await request.json()
-    history = body.get("history",[])
-    raw = llm(SIMULATION_PROMPT, history+[{"role":"user","content":body.get("prompt","")}], 1500)
-    m = re.search(r"\{.*\}", raw, re.DOTALL)
-    if not m:
-        return JSONResponse({"error":"Could not parse simulation JSON","raw":raw}, status_code=500)
-    return JSONResponse({"simulation": json.loads(m.group())})
-
-
-@app.post("/api/bom")
-async def generate_bom(request: Request):
-    body = await request.json()
-    history = body.get("history",[])
-    raw = llm(BOM_PROMPT, history+[{"role":"user","content":body.get("prompt","")}], 1500)
-    m = re.search(r"\{.*\}", raw, re.DOTALL)
-    if not m:
-        return JSONResponse({"error":"Could not parse BOM JSON","raw":raw}, status_code=500)
-    return JSONResponse({"bom": json.loads(m.group())})
-
+    return StreamingResponse(
+        llm_stream(ARDUINO_PROMPT, body.get("history",[])+[{"role":"user","content":body.get("prompt","")}], 2500),
+        media_type="text/event-stream", headers={"Cache-Control":"no-cache","X-Accel-Buffering":"no"})
 
 @app.post("/api/learn")
 async def learn(request: Request):
     body = await request.json()
-    history = body.get("history",[])
-    result = llm(LEARN_PROMPT, history+[{"role":"user","content":body.get("prompt","")}], 1500)
+    result = llm(LEARN_PROMPT, body.get("history",[])+[{"role":"user","content":body.get("prompt","")}], 1500)
     return JSONResponse({"result": result})
 
+@app.post("/api/learn/stream")
+async def learn_stream(request: Request):
+    body = await request.json()
+    return StreamingResponse(
+        llm_stream(LEARN_PROMPT, body.get("history",[])+[{"role":"user","content":body.get("prompt","")}], 1500),
+        media_type="text/event-stream", headers={"Cache-Control":"no-cache","X-Accel-Buffering":"no"})
+
+@app.post("/api/simulate")
+async def simulate_circuit(request: Request):
+    body = await request.json()
+    raw = llm(SIMULATION_PROMPT, body.get("history",[])+[{"role":"user","content":body.get("prompt","")}], 1500)
+    m = re.search(r"\{.*\}", raw, re.DOTALL)
+    if not m: return JSONResponse({"error":"Could not parse simulation JSON"}, status_code=500)
+    return JSONResponse({"simulation": json.loads(m.group())})
+
+@app.post("/api/bom")
+async def generate_bom(request: Request):
+    body = await request.json()
+    raw = llm(BOM_PROMPT, body.get("history",[])+[{"role":"user","content":body.get("prompt","")}], 1500)
+    m = re.search(r"\{.*\}", raw, re.DOTALL)
+    if not m: return JSONResponse({"error":"Could not parse BOM JSON"}, status_code=500)
+    return JSONResponse({"bom": json.loads(m.group())})
 
 @app.post("/api/save-circuit")
 async def save_circuit(request: Request):
     body = await request.json()
-    name = body.get("name", "Untitled Circuit").strip() or "Untitled Circuit"
-    is_public = 1 if body.get("is_public") else 0
-    
-    tech_data = {
-        "schematic_image": body.get("schematic_image"),
-        "schematic_description": body.get("schematic_description", ""),
-        "components": body.get("components", []),
-        "simulation": body.get("simulation"),
-        "arduino_code": body.get("arduino_code", ""),
-        "bom": body.get("bom"),
-    }
-    
+    name = body.get("name","Untitled Circuit").strip() or "Untitled Circuit"
     saved_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-    
+    tech = {k: body.get(k) for k in ("schematic_image","schematic_description","components","simulation","arduino_code","bom")}
     with sqlite3.connect(DB_PATH) as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            "INSERT INTO circuits (name, saved_at, data, is_public) VALUES (?, ?, ?, ?)",
-            (name, saved_at, json.dumps(tech_data), is_public)
-        )
-        cid = cursor.lastrowid
-        
-    return JSONResponse({"id": str(cid), "name": name})
-
+        cur = conn.execute("INSERT INTO circuits (name,saved_at,data,is_public) VALUES(?,?,?,?)",
+                           (name, saved_at, json.dumps(tech), 1 if body.get("is_public") else 0))
+    return JSONResponse({"id": str(cur.lastrowid), "name": name})
 
 @app.get("/api/list-circuits")
 async def list_circuits():
     with sqlite3.connect(DB_PATH) as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, name, saved_at FROM circuits ORDER BY id DESC LIMIT 50")
-        rows = cursor.fetchall()
-        
-    return JSONResponse({"circuits": [
-        {"id": str(row[0]), "name": row[1], "saved_at": row[2]}
-        for row in rows
-    ]})
-
+        rows = conn.execute("SELECT id,name,saved_at FROM circuits ORDER BY id DESC LIMIT 50").fetchall()
+    return JSONResponse({"circuits":[{"id":str(r[0]),"name":r[1],"saved_at":r[2]} for r in rows]})
 
 @app.get("/api/load-circuit/{cid}")
 async def load_circuit(cid: str):
     with sqlite3.connect(DB_PATH) as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT name, saved_at, data FROM circuits WHERE id = ?", (cid,))
-        row = cursor.fetchone()
-        
-    if not row:
-        return JSONResponse({"error": "Not found"}, status_code=404)
-        
-    data = json.loads(row[2])
-    data["name"] = row[0]
-    data["saved_at"] = row[1]
+        row = conn.execute("SELECT name,saved_at,data FROM circuits WHERE id=?",(cid,)).fetchone()
+    if not row: return JSONResponse({"error":"Not found"},status_code=404)
+    data = json.loads(row[2]); data["name"]=row[0]; data["saved_at"]=row[1]
     return JSONResponse(data)
 
-
-@app.get("/api/gallery")
-async def get_gallery():
-    with sqlite3.connect(DB_PATH) as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, name, saved_at, data FROM circuits WHERE is_public = 1 ORDER BY id DESC LIMIT 20")
-        rows = cursor.fetchall()
-        
-    gallery = []
-    for row in rows:
-        tech = json.loads(row[3])
-        gallery.append({
-            "id": str(row[0]),
-            "name": row[1],
-            "saved_at": row[2],
-            "image": tech.get("schematic_image"),
-            "description": tech.get("schematic_description")
-        })
-    return JSONResponse({"gallery": gallery})
-
+# gallery endpoint moved below with upvote support
 
 @app.post("/api/export-kicad")
 async def export_kicad(request: Request):
     body = await request.json()
-    name = body.get("name", "Circuit")
-    components = body.get("components", [])
-    
-    # Generate basic KiCad 6.0+ S-expression schematic
-    kicad = f'(kicad_sch (version 20211123) (generator "circuit_copilot") (uuid "{hash(name)}")\n'
-    kicad += f'  (paper "A4")\n'
-    
-    for i, comp in enumerate(components):
-        # Extremely simplified mapping for demonstration
-        ref = comp.get("name", f"U{i}")
-        val = comp.get("value", "???")
-        x, y = 100 + (i % 5) * 40, 100 + (i // 5) * 40
-        kicad += f'  (symbol (lib_id "Device:{comp.get("type", "R")}") (at {x} {y} 0)\n'
-        kicad += f'    (property "Reference" "{ref}" (id 0) (at {x} {y-5} 0))\n'
-        kicad += f'    (property "Value" "{val}" (id 1) (at {x} {y+5} 0))\n'
-        kicad += f'  )\n'
-        
+    name = body.get("name","Circuit"); components = body.get("components",[])
+    type_map = {"resistor":"R","capacitor":"C","led":"LED","battery":"Battery",
+                "diode":"D","transistor":"Q","inductor":"L","switch":"SW","mosfet":"Q","op_amp":"U"}
+    kicad = f'(kicad_sch (version 20230121) (generator "circuit_copilot")\n  (paper "A4")\n'
+    for i, c in enumerate(components):
+        ref = c.get("label",f"U{i+1}"); val = c.get("value","?")
+        sym = type_map.get(c.get("type","resistor"),"R")
+        x, y = 50 + (i % 6)*50, 50 + (i//6)*50
+        kicad += f'  (symbol (lib_id "Device:{sym}") (at {x} {y} 0)\n'
+        kicad += f'    (property "Reference" "{ref}" (id 0) (at {x} {y-7} 0))\n'
+        kicad += f'    (property "Value" "{val}" (id 1) (at {x} {y+7} 0)) )\n'
     kicad += ')'
     return JSONResponse({"kicad_sch": kicad})
 
+@app.post("/api/export-pdf")
+async def export_pdf(request: Request):
+    data = await request.json()
+    pdf_bytes = generate_pdf(data)
+    fname = data.get("project_name","circuit_report").replace(" ","_")+".pdf"
+    return StreamingResponse(io.BytesIO(pdf_bytes), media_type="application/pdf",
+                             headers={"Content-Disposition":f"attachment; filename={fname}"})
 
 @app.websocket("/ws/{cid}")
 async def websocket_endpoint(websocket: WebSocket, cid: str):
     await manager.connect(websocket, cid)
     try:
         while True:
-            data = await websocket.receive_text()
-            # Broadcast update to everyone else in this circuit session
-            await manager.broadcast(data, cid, websocket)
+            await manager.broadcast(await websocket.receive_text(), cid, websocket)
     except WebSocketDisconnect:
         manager.disconnect(websocket, cid)
 
-
-@app.post("/api/export-pdf")
-async def export_pdf(request: Request):
-    data = await request.json()
-    pdf_bytes = generate_pdf(data)
-    fname = data.get("project_name","circuit_report").replace(" ","_") + ".pdf"
-    return StreamingResponse(io.BytesIO(pdf_bytes), media_type="application/pdf",
-                             headers={"Content-Disposition": f"attachment; filename={fname}"})
-
-
 @app.get("/", response_class=HTMLResponse)
 async def landing():
-    with open("static/landing.html","r") as f:
-        return f.read()
+    with open("static/landing.html") as f: return f.read()
 
 @app.get("/app", response_class=HTMLResponse)
 async def main_app():
-    with open("static/index.html","r") as f:
-        return f.read()
+    with open("static/index.html") as f: return f.read()
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+
+@app.post("/api/upvote/{cid}")
+async def upvote_circuit(cid: str):
+    """Increment upvote count for a circuit."""
+    try:
+        with sqlite3.connect(DB_PATH) as conn:
+            # Add upvotes column if it doesn't exist
+            try:
+                conn.execute("ALTER TABLE circuits ADD COLUMN upvotes INTEGER DEFAULT 0")
+            except: pass
+            conn.execute("UPDATE circuits SET upvotes = COALESCE(upvotes,0) + 1 WHERE id = ?", (cid,))
+            row = conn.execute("SELECT upvotes FROM circuits WHERE id = ?", (cid,)).fetchone()
+        return JSONResponse({"id": cid, "upvotes": row[0] if row else 1})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@app.get("/api/gallery")
+async def get_gallery():
+    with sqlite3.connect(DB_PATH) as conn:
+        try: conn.execute("ALTER TABLE circuits ADD COLUMN upvotes INTEGER DEFAULT 0")
+        except: pass
+        rows = conn.execute(
+            "SELECT id,name,saved_at,data,COALESCE(upvotes,0) FROM circuits WHERE is_public=1 ORDER BY COALESCE(upvotes,0) DESC, id DESC LIMIT 30"
+        ).fetchall()
+    return JSONResponse({"gallery":[{
+        "id": str(r[0]), "name": r[1], "saved_at": r[2],
+        "image": json.loads(r[3]).get("schematic_image"),
+        "description": json.loads(r[3]).get("schematic_description",""),
+        "upvotes": r[4]
+    } for r in rows]})

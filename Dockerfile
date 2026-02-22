@@ -1,20 +1,25 @@
 FROM python:3.11-slim
 
-WORKDIR /app
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
+# Install system deps for matplotlib
+RUN apt-get update && apt-get install -y \
+    libfreetype6-dev \
+    libpng-dev \
+    pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
+WORKDIR /app
+
+# Install Python deps first (better caching)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+# Copy app files
+COPY app.py .
+COPY static/ ./static/
 
-# Move HTML files into static/ if not already there
-RUN mkdir -p static && \
-    cp -n index.html static/index.html 2>/dev/null || true && \
-    cp -n landing.html static/landing.html 2>/dev/null || true
+# HuggingFace Spaces runs as non-root user 1000
+RUN mkdir -p /app && chown -R 1000:1000 /app
+USER 1000
 
 EXPOSE 7860
 
