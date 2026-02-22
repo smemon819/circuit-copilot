@@ -2,12 +2,12 @@
 title: Circuit Copilot
 emoji: ⚡
 colorFrom: blue
-colorTo: cyan
+colorTo: indigo
 sdk: docker
 app_port: 7860
 pinned: false
 license: mit
-short_description: AI circuit design — schematics, simulation, Arduino code & BOM
+short_description: AI-powered circuit design assistant. Describe circuits in plain English → get schematics, simulations, BOM, Arduino code, and more instantly.
 ---
 
 # ⚡ Circuit Copilot v4.2
