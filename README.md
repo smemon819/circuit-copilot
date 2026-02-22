@@ -10,7 +10,7 @@ license: mit
 short_description: AI circuit design — schematics, simulation, Arduino code & BOM
 ---
 
-# ⚡ Circuit Copilot v4.1
+# ⚡ Circuit Copilot v4.2
 
 AI-powered circuit design assistant. Describe circuits in plain English → get schematics, simulations, BOM, Arduino code, and more instantly.
 

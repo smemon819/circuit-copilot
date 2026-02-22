@@ -8072,6 +8072,361 @@
             schInput.parentNode.insertBefore(banner, schInput.nextSibling);
         })();
 
+        // ══════════════════════════════════════════════════════════════════════
+        // v4.2 FEATURES
+        // ══════════════════════════════════════════════════════════════════════
+
+        // ── #3 WEBSOCKET LIVE VIEWER COUNTER ───────────────────────────────────
+        (function initViewerCounter() {
+            // Inject badge into header
+            const hdrRight = document.querySelector('.hdr-right');
+            if (!hdrRight || document.getElementById('viewer-badge')) return;
+            const badge = document.createElement('div');
+            badge.id = 'viewer-badge';
+            badge.style.cssText = 'display:flex;align-items:center;gap:5px;background:rgba(0,240,144,.08);border:1px solid rgba(0,240,144,.3);border-radius:20px;padding:3px 10px;font-family:JetBrains Mono,monospace;font-size:.66rem;color:var(--accent2);';
+            badge.innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:var(--accent2);animation:blink 1.5s infinite;flex-shrink:0;"></span><span id="viewer-count">1</span> live';
+            hdrRight.insertBefore(badge, hdrRight.firstChild);
+
+            // Track viewers via WebSocket
+            const cid = localStorage.getItem('cc_collab_room') || 'main';
+            const wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const ws = new WebSocket(`${wsProto}//${location.host}/ws/${cid}`);
+
+            // Broadcast presence heartbeat every 15s
+            let count = 1;
+            const heartbeat = () => {
+                try { ws.send(JSON.stringify({ type: 'presence', ts: Date.now() })); } catch (e) { }
+            };
+            ws.onopen = () => { heartbeat(); setInterval(heartbeat, 15000); };
+
+            // Count unique senders in a rolling 30s window
+            const seen = new Map();
+            ws.onmessage = (e) => {
+                try {
+                    const msg = JSON.parse(e.data);
+                    if (msg.type === 'presence') {
+                        seen.set(msg.ts || Math.random(), Date.now());
+                        // Prune entries older than 30s
+                        const now = Date.now();
+                        for (const [k, v] of seen) if (now - v > 30000) seen.delete(k);
+                        count = seen.size + 1; // +1 = self
+                        const el = document.getElementById('viewer-count');
+                        if (el) el.textContent = count;
+                    }
+                } catch (e) { }
+            };
+        })();
+
+        // ── #4 FALSTAD IFRAME EMBED IN SIMULATE TAB ────────────────────────────
+        (function addFalstadEmbed() {
+            // After simulation runs and falstad URL is known, offer inline embed
+            const origRunSimulate = window.runSimulate;
+            if (!origRunSimulate) return;
+            window.runSimulate = async function () {
+                await origRunSimulate.apply(this, arguments);
+                // Show embed button if falstad URL exists in schematic
+                const falstadLink = document.getElementById('falstad-link');
+                if (falstadLink && falstadLink.href && falstadLink.href !== '#') {
+                    injectFalstadEmbed(falstadLink.href);
+                }
+            };
+
+            document.addEventListener('schematic-ready', () => {
+                const fl = document.getElementById('falstad-link');
+                if (fl && fl.href && fl.href !== '#') injectFalstadEmbed(fl.href);
+            });
+
+            function injectFalstadEmbed(url) {
+                const simOut = document.getElementById('sim-out');
+                if (!simOut) return;
+                let embed = document.getElementById('falstad-embed-wrap');
+                if (!embed) {
+                    embed = document.createElement('div');
+                    embed.id = 'falstad-embed-wrap';
+                    embed.style.cssText = 'margin-top:12px;border:1px solid var(--border);border-radius:8px;overflow:hidden;';
+                    embed.innerHTML = `
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;background:var(--panel-hdr);border-bottom:1px solid var(--border);">
+                            <span style="font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--accent);">⚡ FALSTAD LIVE SIM</span>
+                            <div style="display:flex;gap:6px;">
+                                <button class="btn btn-sm" id="falstad-toggle-iframe" onclick="toggleFalstadIframe()">▶ Launch Embed</button>
+                                <a id="falstad-ext-link" href="${url}" target="_blank" class="btn btn-sm">↗ Open Full</a>
+                            </div>
+                        </div>
+                        <div id="falstad-iframe-container" style="display:none;height:400px;">
+                            <iframe id="falstad-iframe" src="" style="width:100%;height:100%;border:none;" allow="fullscreen"></iframe>
+                        </div>`;
+                    simOut.appendChild(embed);
+                } else {
+                    const extLink = document.getElementById('falstad-ext-link');
+                    if (extLink) extLink.href = url;
+                    const ifrm = document.getElementById('falstad-iframe');
+                    if (ifrm && ifrm.src) ifrm.src = url;
+                }
+                embed._url = url;
+            }
+        })();
+
+        function toggleFalstadIframe() {
+            const container = document.getElementById('falstad-iframe-container');
+            const btn = document.getElementById('falstad-toggle-iframe');
+            const wrap = document.getElementById('falstad-embed-wrap');
+            if (!container) return;
+            if (container.style.display === 'none') {
+                const ifrm = document.getElementById('falstad-iframe');
+                if (ifrm && wrap && wrap._url) ifrm.src = wrap._url;
+                container.style.display = 'block';
+                if (btn) btn.textContent = '■ Hide';
+            } else {
+                container.style.display = 'none';
+                if (btn) btn.textContent = '▶ Launch Embed';
+            }
+        }
+
+        // ── #5 CIRCUIT COMPLEXITY SCORE ────────────────────────────────────────
+        function computeComplexityScore(schema) {
+            const comps = schema.components || [];
+            const nets = schema.nets || [];
+            const conns = schema.connections || [];
+            const score = comps.length + nets.length + Math.floor(conns.length / 2);
+            let label, color;
+            if (score <= 4) { label = '🟢 Beginner'; color = '#4caf50'; }
+            else if (score <= 9) { label = '🟡 Intermediate'; color = '#ff9800'; }
+            else { label = '🔴 Advanced'; color = '#f44336'; }
+            return {
+                score, label, color,
+                summary: `${comps.length} components · ${nets.length} nets · ${conns.length} connections`
+            };
+        }
+
+        document.addEventListener('schematic-ready', () => {
+            if (!S.sch.lastSchema) return;
+            const cx = computeComplexityScore(S.sch.lastSchema);
+            let box = document.getElementById('complexity-badge');
+            if (!box) {
+                box = document.createElement('div');
+                box.id = 'complexity-badge';
+                box.style.cssText = 'margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;';
+                const meta = document.getElementById('sch-meta');
+                if (meta) meta.parentNode.insertBefore(box, meta.nextSibling);
+            }
+            box.innerHTML = `
+                <span style="background:var(--bg3);border:1px solid var(--border);border-radius:5px;
+                    padding:3px 10px;font-family:'JetBrains Mono',monospace;font-size:.68rem;color:${cx.color};">
+                    ${cx.label}
+                </span>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--text-dim);">
+                    ${cx.summary}
+                </span>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:.65rem;
+                    background:rgba(0,200,240,.1);border:1px solid rgba(0,200,240,.25);
+                    border-radius:5px;padding:2px 8px;color:var(--accent);">
+                    Ω score: ${cx.score}
+                </span>`;
+        });
+
+        // ── #6 PRE-BAKED DEMO CIRCUITS ─────────────────────────────────────────
+        const DEMO_CIRCUITS = [
+            {
+                label: '💡 LED Blinker',
+                schema: {
+                    title: 'LED Blinker', difficulty: 'Beginner',
+                    description: 'Classic 555 timer astable circuit blinking an LED at ~1Hz. R1=1kΩ, R2=47kΩ, C1=10µF.',
+                    use_case: 'Learning, indicators',
+                    components: [
+                        { id: 'V1', type: 'battery', value: '9V', label: 'V1', x: 0, y: 1, orientation: 'up' },
+                        { id: 'R1', type: 'resistor', value: '1kΩ', label: 'R1', x: 1, y: 0, orientation: 'right' },
+                        { id: 'R2', type: 'resistor', value: '47kΩ', label: 'R2', x: 2, y: 0, orientation: 'right' },
+                        { id: 'C1', type: 'capacitor', value: '10µF', label: 'C1', x: 3, y: 0, orientation: 'right' },
+                        { id: 'LED1', type: 'led', value: 'Red', label: 'LED1', x: 4, y: 0, orientation: 'right' },
+                        { id: 'GND1', type: 'ground', value: '', label: 'GND', x: 4, y: 2, orientation: 'down' }
+                    ],
+                    connections: [
+                        { from: 'V1.pos', to: 'R1.start' }, { from: 'R1.end', to: 'R2.start' },
+                        { from: 'R2.end', to: 'C1.start' }, { from: 'C1.end', to: 'LED1.anode' },
+                        { from: 'LED1.cathode', to: 'GND1.top' }, { from: 'V1.neg', to: 'GND1.top' }
+                    ],
+                    nets: [
+                        { name: 'VCC', nodes: ['V1.pos', 'R1.start'] },
+                        { name: 'GND', nodes: ['LED1.cathode', 'V1.neg', 'GND1.top'] }
+                    ]
+                }
+            },
+            {
+                label: '🔊 Audio Amp',
+                schema: {
+                    title: 'LM386 Audio Amplifier', difficulty: 'Intermediate',
+                    description: 'Simple 1W audio amplifier using LM386 IC with gain of 20. Input: 3.5mm aux. Output: 8Ω speaker.',
+                    use_case: 'Audio projects, intercoms',
+                    components: [
+                        { id: 'V1', type: 'battery', value: '9V', label: 'V1', x: 0, y: 1, orientation: 'up' },
+                        { id: 'C1', type: 'capacitor', value: '10µF', label: 'C1', x: 1, y: 0, orientation: 'right' },
+                        { id: 'R1', type: 'resistor', value: '10Ω', label: 'R1', x: 2, y: 0, orientation: 'right' },
+                        { id: 'U1', type: 'ic', value: 'LM386', label: 'U1', x: 3, y: 0, orientation: 'right' },
+                        { id: 'C2', type: 'capacitor', value: '250µF', label: 'C2', x: 4, y: 0, orientation: 'right' },
+                        { id: 'GND1', type: 'ground', value: '', label: 'GND', x: 4, y: 2, orientation: 'down' }
+                    ],
+                    connections: [
+                        { from: 'V1.pos', to: 'C1.start' }, { from: 'C1.end', to: 'U1.in' },
+                        { from: 'U1.out', to: 'C2.start' }, { from: 'C2.end', to: 'R1.start' },
+                        { from: 'V1.neg', to: 'GND1.top' }
+                    ],
+                    nets: [
+                        { name: 'VCC', nodes: ['V1.pos'] }, { name: 'GND', nodes: ['V1.neg', 'GND1.top'] }
+                    ]
+                }
+            },
+            {
+                label: '📡 IR Remote',
+                schema: {
+                    title: 'IR Receiver Circuit', difficulty: 'Beginner',
+                    description: 'TSOP4838 IR receiver with decoupling capacitor. Outputs decoded signal to microcontroller.',
+                    use_case: 'Remote controls, IR sensors',
+                    components: [
+                        { id: 'V1', type: 'battery', value: '5V', label: 'V1', x: 0, y: 1, orientation: 'up' },
+                        { id: 'R1', type: 'resistor', value: '100Ω', label: 'R1', x: 1, y: 0, orientation: 'right' },
+                        { id: 'C1', type: 'capacitor', value: '100nF', label: 'C1', x: 2, y: 0, orientation: 'right' },
+                        { id: 'U1', type: 'ic', value: 'TSOP4838', label: 'U1', x: 3, y: 0, orientation: 'right' },
+                        { id: 'GND1', type: 'ground', value: '', label: 'GND', x: 3, y: 2, orientation: 'down' }
+                    ],
+                    connections: [
+                        { from: 'V1.pos', to: 'R1.start' }, { from: 'R1.end', to: 'U1.vcc' },
+                        { from: 'U1.gnd', to: 'GND1.top' }, { from: 'V1.neg', to: 'GND1.top' }
+                    ],
+                    nets: [
+                        { name: 'VCC', nodes: ['V1.pos', 'R1.start'] }, { name: 'GND', nodes: ['V1.neg', 'GND1.top'] }
+                    ]
+                }
+            },
+            {
+                label: '⚡ Buck Converter',
+                schema: {
+                    title: '5V Buck Converter', difficulty: 'Advanced',
+                    description: '12V→5V step-down converter using LM2596 with 22µH inductor, 100µF output cap. Efficiency ~80%.',
+                    use_case: 'Power supplies, USB chargers',
+                    components: [
+                        { id: 'V1', type: 'battery', value: '12V', label: 'V1', x: 0, y: 1, orientation: 'up' },
+                        { id: 'C1', type: 'capacitor', value: '100µF', label: 'Cin', x: 1, y: 0, orientation: 'right' },
+                        { id: 'U1', type: 'ic', value: 'LM2596', label: 'U1', x: 2, y: 0, orientation: 'right' },
+                        { id: 'L1', type: 'inductor', value: '22µH', label: 'L1', x: 3, y: 0, orientation: 'right' },
+                        { id: 'D1', type: 'diode', value: '1N5822', label: 'D1', x: 3, y: 1, orientation: 'down' },
+                        { id: 'C2', type: 'capacitor', value: '100µF', label: 'Cout', x: 4, y: 0, orientation: 'right' },
+                        { id: 'GND1', type: 'ground', value: '', label: 'GND', x: 4, y: 2, orientation: 'down' }
+                    ],
+                    connections: [
+                        { from: 'V1.pos', to: 'C1.start' }, { from: 'C1.end', to: 'U1.in' },
+                        { from: 'U1.out', to: 'L1.start' }, { from: 'L1.end', to: 'C2.start' },
+                        { from: 'V1.neg', to: 'GND1.top' }
+                    ],
+                    nets: [
+                        { name: 'VIN', nodes: ['V1.pos'] }, { name: 'VOUT', nodes: ['C2.start'] },
+                        { name: 'GND', nodes: ['V1.neg', 'GND1.top'] }
+                    ]
+                }
+            }
+        ];
+
+        function loadDemoCircuit(idx) {
+            const demo = DEMO_CIRCUITS[idx];
+            if (!demo) return;
+            S.sch.lastSchema = demo.schema;
+            renderSVGSchematic(demo.schema);
+            document.getElementById('sch-ph').style.display = 'none';
+            document.getElementById('sch-dl').style.display = 'inline-flex';
+            document.getElementById('sch-share').style.display = 'inline-flex';
+            document.getElementById('sch-screenshot').style.display = 'inline-flex';
+            const desc = document.getElementById('sch-desc');
+            if (desc) { desc.textContent = '► ' + demo.schema.description; desc.style.display = 'block'; }
+            const meta = document.getElementById('sch-meta');
+            if (meta) {
+                meta.style.display = 'flex';
+                meta.innerHTML = `<span class="meta-tag badge-info">${demo.schema.difficulty}</span>
+                    <span class="meta-tag" style="font-size:.66rem;color:var(--text-dim);background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:2px 7px;">${demo.schema.use_case}</span>`;
+            }
+            document.dispatchEvent(new CustomEvent('schematic-ready'));
+            pdfData.schematic_description = demo.schema.description;
+            pdfData.components = demo.schema.components;
+            switchTab('schematic', document.querySelector('.tab.active') || document.querySelector('.tab'));
+            showToast(`⚡ Loaded: ${demo.schema.title}`);
+        }
+
+        // Inject demo buttons into the schematic examples area
+        (function injectDemoButtons() {
+            const examples = document.querySelector('#tab-schematic .examples');
+            if (!examples || document.getElementById('demo-chips')) return;
+            const wrap = document.createElement('div');
+            wrap.id = 'demo-chips';
+            wrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);';
+            wrap.innerHTML = '<span style="font-family:JetBrains Mono,monospace;font-size:.62rem;color:var(--text-dim);align-self:center;">⚡ INSTANT DEMOS:</span>' +
+                DEMO_CIRCUITS.map((d, i) =>
+                    `<span class="chip" style="border-color:var(--accent);color:var(--accent);" onclick="loadDemoCircuit(${i})">${d.label}</span>`
+                ).join('');
+            examples.parentNode.insertBefore(wrap, examples.nextSibling);
+        })();
+
+        // ── #7 CONFETTI ON FIRST CIRCUIT GENERATION ────────────────────────────
+        (function hookFirstGenConfetti() {
+            const FIRST_GEN_KEY = 'cc_first_gen_done';
+            if (localStorage.getItem(FIRST_GEN_KEY)) return; // already triggered before
+            document.addEventListener('schematic-ready', function onFirstGen() {
+                if (localStorage.getItem(FIRST_GEN_KEY)) return;
+                localStorage.setItem(FIRST_GEN_KEY, '1');
+                document.removeEventListener('schematic-ready', onFirstGen);
+                if (typeof fireConfetti === 'function') {
+                    fireConfetti();
+                    showToast('🎉 First circuit generated! Welcome to Circuit Copilot!');
+                }
+            });
+        })();
+
+        // ── #8 HACKATHON BADGE IN HEADER ────────────────────────────────────────
+        (function addHackathonBadge() {
+            const logoInfo = document.querySelector('.logo-info p');
+            if (!logoInfo || document.getElementById('hackathon-badge')) return;
+
+            // Update subline
+            logoInfo.textContent = 'v4.2 · AI Design Assistant';
+
+            // Add glow badge next to the logo
+            const badge = document.createElement('div');
+            badge.id = 'hackathon-badge';
+            badge.style.cssText = `
+                background: linear-gradient(135deg, rgba(168,85,247,.15), rgba(0,200,240,.15));
+                border: 1px solid var(--purple);
+                border-radius: 6px;
+                padding: 2px 8px;
+                font-family: 'JetBrains Mono', monospace;
+                font-size: .58rem;
+                color: var(--purple);
+                letter-spacing: 1px;
+                text-transform: uppercase;
+                animation: pulse 3s ease-in-out infinite;
+                white-space: nowrap;
+                margin-left: 4px;
+            `;
+            badge.textContent = '🏆 Hackathon';
+            const logoDiv = document.querySelector('.logo');
+            if (logoDiv) logoDiv.appendChild(badge);
+        })();
+
+        // ── compound-beta badge on Components panel ──────────────────────────────
+        (function addCompoundBetaBadge() {
+            const compHdr = document.querySelector('#tab-components .panel-title, #tab-components .panel-hdr .panel-title');
+            if (!compHdr || document.getElementById('compound-badge')) return;
+            const badge = document.createElement('span');
+            badge.id = 'compound-badge';
+            badge.style.cssText = 'font-family:JetBrains Mono,monospace;font-size:.55rem;background:linear-gradient(135deg,rgba(168,85,247,.2),rgba(0,200,240,.2));border:1px solid var(--purple);border-radius:4px;padding:1px 6px;color:var(--purple);margin-left:6px;letter-spacing:.5px;';
+            badge.textContent = '⚡ compound-beta';
+            compHdr.appendChild(badge);
+        })();
+
+        // Update version string
+        (function updateVersion() {
+            const el = document.getElementById('status-txt');
+            if (el) el.textContent = 'ONLINE · specdec + compound-beta · v4.2';
+            const logoP = document.querySelector('.logo-info p');
+            if (logoP && !logoP.textContent.includes('4.2')) logoP.textContent = 'v4.2 · AI Design Assistant';
+        })();
+
     </script>
 </body>
 

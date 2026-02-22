@@ -35,6 +35,7 @@ app.add_exception_handler(RateLimitExceeded, _custom_rate_limit_handler)
 client = Groq(api_key=os.environ.get("GROQ_API_KEY", ""))
 GROQ_MODEL        = "llama-3.3-70b-specdec"
 GROQ_VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
+GROQ_AGENT_MODEL  = "compound-beta"   # Agentic model with built-in web search
 
 # ── Database ───────────────────────────────────────────────────────────────────
 from supabase import create_client, Client
@@ -381,6 +382,33 @@ async def llm_stream(system: str, messages: list, max_tokens: int = 1024):
             yield f"data: {json.dumps({'content': delta})}\n\n"
     yield "data: [DONE]\n\n"
 
+def llm_compound(system: str, messages: list, max_tokens: int = 1500) -> str:
+    """Call compound-beta with web_search tool for live data (prices, stock)."""
+    try:
+        r = client.chat.completions.create(
+            model=GROQ_AGENT_MODEL, max_tokens=max_tokens,
+            messages=[{"role":"system","content":system}] + messages)
+        return r.choices[0].message.content
+    except Exception:
+        # Fallback to standard model if compound-beta unavailable
+        return llm(system, messages, max_tokens)
+
+async def llm_compound_stream(system: str, messages: list, max_tokens: int = 1500):
+    """Streaming variant of compound-beta with graceful fallback."""
+    try:
+        stream = client.chat.completions.create(
+            model=GROQ_AGENT_MODEL, max_tokens=max_tokens, stream=True,
+            messages=[{"role":"system","content":system}] + messages)
+        for chunk in stream:
+            delta = chunk.choices[0].delta.content
+            if delta:
+                yield f"data: {json.dumps({'content': delta})}\n\n"
+    except Exception:
+        async for chunk in llm_stream(system, messages, max_tokens):
+            yield chunk
+    yield "data: [DONE]\n\n"
+
+
 # ── API Routes ─────────────────────────────────────────────────────────────────
 
 @app.post("/api/schematic")
@@ -440,15 +468,15 @@ async def image_to_circuit(request: Request):
 @limiter.limit("10/minute")
 async def recommend_components(request: Request):
     body = await request.json()
-    result = llm(COMPONENT_PROMPT, body.get("history",[])+[{"role":"user","content":body.get("prompt","")}], 1200)
-    return JSONResponse({"result": result})
+    result = llm_compound(COMPONENT_PROMPT, body.get("history",[])+[{"role":"user","content":body.get("prompt","")}], 1500)
+    return JSONResponse({"result": result, "model": "compound-beta"})
 
 @app.post("/api/components/stream")
 @limiter.limit("10/minute")
 async def components_stream(request: Request):
     body = await request.json()
     return StreamingResponse(
-        llm_stream(COMPONENT_PROMPT, body.get("history",[])+[{"role":"user","content":body.get("prompt","")}], 1200),
+        llm_compound_stream(COMPONENT_PROMPT, body.get("history",[])+[{"role":"user","content":body.get("prompt","")}], 1500),
         media_type="text/event-stream", headers={"Cache-Control":"no-cache","X-Accel-Buffering":"no"})
 
 @app.post("/api/debug")
