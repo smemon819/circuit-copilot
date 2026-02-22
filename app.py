@@ -528,11 +528,11 @@ async def websocket_endpoint(websocket: WebSocket, cid: str):
 
 @app.get("/", response_class=HTMLResponse)
 async def landing():
-    with open("static/landing.html") as f: return f.read()
+    with open("static/landing.html", encoding="utf-8") as f: return f.read()
 
 @app.get("/app", response_class=HTMLResponse)
 async def main_app():
-    with open("static/index.html") as f: return f.read()
+    with open("static/index.html", encoding="utf-8") as f: return f.read()
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
