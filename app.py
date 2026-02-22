@@ -17,7 +17,14 @@ from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer,
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER
 
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
 app = FastAPI(title="Circuit Copilot v4")
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 client = Groq(api_key=os.environ.get("GROQ_API_KEY", ""))
 GROQ_MODEL        = "llama-3.3-70b-versatile"
 GROQ_VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
@@ -347,6 +354,7 @@ async def llm_stream(system: str, messages: list, max_tokens: int = 1024):
 # ── API Routes ─────────────────────────────────────────────────────────────────
 
 @app.post("/api/schematic")
+@limiter.limit("5/minute")
 async def generate_schematic(request: Request):
     body = await request.json()
     prompt = body.get("prompt",""); history = body.get("history",[])
@@ -367,6 +375,7 @@ async def generate_schematic(request: Request):
     })
 
 @app.post("/api/image-to-circuit")
+@limiter.limit("5/minute")
 async def image_to_circuit(request: Request):
     """Vision endpoint: base64 image → identified circuit schema."""
     body = await request.json()
@@ -398,12 +407,14 @@ async def image_to_circuit(request: Request):
         return JSONResponse({"error": f"Vision error: {str(e)}"}, status_code=500)
 
 @app.post("/api/components")
+@limiter.limit("10/minute")
 async def recommend_components(request: Request):
     body = await request.json()
     result = llm(COMPONENT_PROMPT, body.get("history",[])+[{"role":"user","content":body.get("prompt","")}], 1200)
     return JSONResponse({"result": result})
 
 @app.post("/api/components/stream")
+@limiter.limit("10/minute")
 async def components_stream(request: Request):
     body = await request.json()
     return StreamingResponse(
@@ -411,12 +422,14 @@ async def components_stream(request: Request):
         media_type="text/event-stream", headers={"Cache-Control":"no-cache","X-Accel-Buffering":"no"})
 
 @app.post("/api/debug")
+@limiter.limit("10/minute")
 async def debug_circuit(request: Request):
     body = await request.json()
     result = llm(DEBUG_PROMPT, body.get("history",[])+[{"role":"user","content":body.get("prompt","")}], 1200)
     return JSONResponse({"result": result})
 
 @app.post("/api/debug/stream")
+@limiter.limit("10/minute")
 async def debug_stream(request: Request):
     body = await request.json()
     return StreamingResponse(
@@ -424,12 +437,14 @@ async def debug_stream(request: Request):
         media_type="text/event-stream", headers={"Cache-Control":"no-cache","X-Accel-Buffering":"no"})
 
 @app.post("/api/arduino")
+@limiter.limit("10/minute")
 async def generate_arduino(request: Request):
     body = await request.json()
     result = llm(ARDUINO_PROMPT, body.get("history",[])+[{"role":"user","content":body.get("prompt","")}], 2500)
     return JSONResponse({"result": result})
 
 @app.post("/api/arduino/stream")
+@limiter.limit("10/minute")
 async def arduino_stream(request: Request):
     body = await request.json()
     return StreamingResponse(
@@ -437,12 +452,14 @@ async def arduino_stream(request: Request):
         media_type="text/event-stream", headers={"Cache-Control":"no-cache","X-Accel-Buffering":"no"})
 
 @app.post("/api/learn")
+@limiter.limit("10/minute")
 async def learn(request: Request):
     body = await request.json()
     result = llm(LEARN_PROMPT, body.get("history",[])+[{"role":"user","content":body.get("prompt","")}], 1500)
     return JSONResponse({"result": result})
 
 @app.post("/api/learn/stream")
+@limiter.limit("10/minute")
 async def learn_stream(request: Request):
     body = await request.json()
     return StreamingResponse(
@@ -458,6 +475,7 @@ async def simulate_circuit(request: Request):
     return JSONResponse({"simulation": json.loads(m.group())})
 
 @app.post("/api/bom")
+@limiter.limit("10/minute")
 async def generate_bom(request: Request):
     body = await request.json()
     raw = llm(BOM_PROMPT, body.get("history",[])+[{"role":"user","content":body.get("prompt","")}], 1500)
