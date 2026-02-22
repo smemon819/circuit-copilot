@@ -4825,10 +4825,21 @@
         <div class="saved-item-info">
           <div class="saved-item-name">⚡ ${c.name}</div>
           <div class="saved-item-time">${c.saved_at}</div>
+        <div style="display:flex;gap:6px;">
+            <button class="btn btn-sm" onclick="copyShareLink('${c.id}')">🔗 Share</button>
+            <button class="btn btn-sm" onclick="loadCircuit('${c.id}')">Load</button>
         </div>
-        <button class="btn btn-sm" onclick="loadCircuit('${c.id}')">Load</button>
-      </div>`).join('');
+    </div>`).join('');
             } catch (e) { console.error(e); }
+        }
+
+        function copyShareLink(id) {
+            const url = window.location.origin + window.location.pathname + '?circuit=' + id;
+            navigator.clipboard.writeText(url).then(() => {
+                showToast('🔗 Link copied to clipboard!');
+            }).catch(() => {
+                showToast('⚠ Failed to copy link');
+            });
         }
 
         async function loadCircuit(id) {
@@ -6817,6 +6828,7 @@
                       onclick="upvoteCircuit('${c.id}')" style="font-size:.65rem;padding:4px 10px;">
                       ⚡ ${votes + (hasUpvoted ? 1 : 0)}
                     </button>
+                    <button class="btn btn-sm" onclick="copyShareLink('${c.id}')" style="font-size:.65rem;padding:4px 10px;">🔗 Share</button>
                     <button class="btn btn-sm" onclick="loadFromGallery('${c.id}')" style="font-size:.65rem;padding:4px 10px;">🍴 Fork</button>
                   </div>
                 </div>
