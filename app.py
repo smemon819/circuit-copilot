@@ -22,7 +22,7 @@ app = FastAPI(title="Circuit Copilot v4")
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _custom_rate_limit_handler)
-client = Groq(api_key=os.environ.get("GROQ_API_KEY", ""))
+client = AsyncGroq(api_key=os.environ.get("GROQ_API_KEY", ""))
 GROQ_MODEL        = "llama-3.3-70b-specdec"
 GROQ_VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
 GROQ_AGENT_MODEL  = "compound-beta"   # Agentic model with built-in web search
