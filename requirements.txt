@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+groq
+schemdraw
+matplotlib
+python-multipart
+Pillow
+reportlab
+websockets
+httpx
+supabase
+slowapi
