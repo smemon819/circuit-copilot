@@ -343,59 +343,85 @@ def generate_pdf(data: dict) -> bytes:
     F  = PS("F",  fontSize=8,  textColor=colors.HexColor("#999"), alignment=TA_CENTER)
     story = []
     now = datetime.datetime.now().strftime("%B %d, %Y %H:%M")
-    story += [Paragraph("⚡ Circuit Copilot", T),
+    story += [Paragraph("Circuit Copilot", T),
               Paragraph(f"AI-Powered Circuit Design Report · {now}", S),
               HRFlowable(width="100%", thickness=2, color=colors.HexColor("#003366")),
               Spacer(1, 8*mm)]
     if data.get("project_name"):
         story += [Paragraph(f"Project: {data['project_name']}", PS("pn",fontSize=14,textColor=colors.HexColor("#003366"),fontName="Helvetica-Bold")),
                   Spacer(1, 4*mm)]
+    
+    # Schematic Section
     if data.get("schematic_image"):
-        story.append(Paragraph("Circuit Schematic", H2))
-        story.append(RLImage(io.BytesIO(base64.b64decode(data["schematic_image"])), width=160*mm, height=90*mm))
-        story.append(Spacer(1, 4*mm))
+        try:
+            story.append(Paragraph("Circuit Schematic", H2))
+            story.append(RLImage(io.BytesIO(base64.b64decode(data["schematic_image"])), width=160*mm, height=90*mm))
+            story.append(Spacer(1, 4*mm))
+        except: pass
+    
     if data.get("schematic_description"):
         story += [Paragraph(data["schematic_description"], B), Spacer(1, 6*mm)]
+    
+    # BOM Section
     if data.get("bom"):
-        bom = data["bom"]
-        story.append(Paragraph("Bill of Materials", H2))
-        rows = [["Ref","Description","Value","Qty","Unit $","Total","Supplier"]]
-        for it in bom.get("items",[]):
-            rows.append([it.get("ref",""),it.get("description",""),it.get("value",""),
-                         str(it.get("quantity",1)),f"${it.get('unit_cost',0):.2f}",
-                         f"${it.get('total_cost',0):.2f}",it.get("supplier","")])
-        rows.append(["","","","","TOTAL",f"${bom.get('total_cost_usd',0):.2f}",""])
-        t = Table(rows, colWidths=[15*mm,45*mm,22*mm,10*mm,18*mm,18*mm,32*mm])
-        t.setStyle(TableStyle([
-            ("BACKGROUND",(0,0),(-1,0),colors.HexColor("#003366")),("TEXTCOLOR",(0,0),(-1,0),colors.white),
-            ("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),("FONTSIZE",(0,0),(-1,-1),8),
-            ("BACKGROUND",(0,-1),(-1,-1),colors.HexColor("#e8f0fe")),("FONTNAME",(0,-1),(-1,-1),"Helvetica-Bold"),
-            ("ROWBACKGROUNDS",(0,1),(-1,-2),[colors.HexColor("#f0f4ff"),colors.white]),
-            ("GRID",(0,0),(-1,-1),0.4,colors.HexColor("#ccc")),("PADDING",(0,0),(-1,-1),5),
-        ]))
-        story += [t, Spacer(1, 6*mm)]
-    if data.get("simulation"):
-        sim = data["simulation"]
-        story.append(Paragraph("Simulation Results", H2))
-        story += [Paragraph(sim.get("summary",""), B), Spacer(1,4*mm)]
-        if sim.get("nodes"):
-            nr = [["Node","Voltage","Description"]]
-            for n in sim["nodes"]: nr.append([n.get("name",""),f"{n.get('voltage',0)} {n.get('unit','V')}",n.get("description","")])
-            nt = Table(nr, colWidths=[40*mm,30*mm,100*mm])
-            nt.setStyle(TableStyle([
-                ("BACKGROUND",(0,0),(-1,0),colors.HexColor("#005588")),("TEXTCOLOR",(0,0),(-1,0),colors.white),
-                ("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),("FONTSIZE",(0,0),(-1,-1),9),
-                ("ROWBACKGROUNDS",(0,1),(-1,-1),[colors.HexColor("#eef6ff"),colors.white]),
-                ("GRID",(0,0),(-1,-1),0.5,colors.HexColor("#ccc")),("PADDING",(0,0),(-1,-1),5),
+        try:
+            bom = data["bom"]
+            story.append(Paragraph("Bill of Materials", H2))
+            rows = [["Ref","Description","Value","Qty","Unit $","Total","Supplier"]]
+            for it in bom.get("items",[]):
+                try: uc = float(it.get('unit_cost',0))
+                except: uc = 0.0
+                try: tc = float(it.get('total_cost',0))
+                except: tc = 0.0
+                rows.append([it.get("ref",""),it.get("description",""),it.get("value",""),
+                             str(it.get("quantity",1)),f"${uc:.2f}",
+                             f"${tc:.2f}",it.get("supplier","")])
+            try: total_val = float(bom.get('total_cost_usd', 0))
+            except: total_val = 0.0
+            rows.append(["","","","","TOTAL",f"${total_val:.2f}",""])
+            t = Table(rows, colWidths=[15*mm,40*mm,22*mm,10*mm,18*mm,18*mm,32*mm]) # Narrower
+            t.setStyle(TableStyle([
+                ("BACKGROUND",(0,0),(-1,0),colors.HexColor("#003366")),("TEXTCOLOR",(0,0),(-1,0),colors.white),
+                ("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),("FONTSIZE",(0,0),(-1,-1),8),
+                ("BACKGROUND",(0,-1),(-1,-1),colors.HexColor("#e8f0fe")),("FONTNAME",(0,-1),(-1,-1),"Helvetica-Bold"),
+                ("ROWBACKGROUNDS",(0,1),(-1,-2),[colors.HexColor("#f0f4ff"),colors.white]),
+                ("GRID",(0,0),(-1,-1),0.4,colors.HexColor("#ccc")),("PADDING",(0,0),(-1,-1),5),
             ]))
-            story += [nt, Spacer(1,4*mm)]
-        for w in sim.get("warnings",[]): story.append(Paragraph(f"⚠ {w}", W))
+            story += [t, Spacer(1, 6*mm)]
+        except: pass
+
+    # Simulation Section
+    if data.get("simulation"):
+        try:
+            sim = data["simulation"]
+            story.append(Paragraph("Simulation Results", H2))
+            story += [Paragraph(sim.get("summary",""), B), Spacer(1,4*mm)]
+            if sim.get("nodes"):
+                nr = [["Node","Voltage","Description"]]
+                for n in sim["nodes"]: nr.append([n.get("name",""),f"{n.get('voltage',0)} {n.get('unit','V')}",n.get("description","")])
+                nt = Table(nr, colWidths=[35*mm,30*mm,95*mm]) # Slightly narrower
+                nt.setStyle(TableStyle([
+                    ("BACKGROUND",(0,0),(-1,0),colors.HexColor("#005588")),("TEXTCOLOR",(0,0),(-1,0),colors.white),
+                    ("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),("FONTSIZE",(0,0),(-1,-1),9),
+                    ("ROWBACKGROUNDS",(0,1),(-1,-1),[colors.HexColor("#eef6ff"),colors.white]),
+                    ("GRID",(0,0),(-1,-1),0.5,colors.HexColor("#ccc")),("PADDING",(0,0),(-1,-1),5),
+                ]))
+                story += [nt, Spacer(1,4*mm)]
+            for w in sim.get("warnings",[]): story.append(Paragraph(f"Warning: {w}", W))
+        except: pass
+
+    # Arduino Section
     if data.get("arduino_code"):
-        story.append(Paragraph("Arduino Code", H2))
-        code = data["arduino_code"]
-        m = re.search(r"```(?:cpp|arduino|ino)?\n([\s\S]*?)```", code)
-        for line in (m.group(1) if m else code)[:3000].split("\n"):
-            story.append(Paragraph(line.replace(" ","&nbsp;").replace("<","&lt;") or "&nbsp;", C))
+        try:
+            story.append(Paragraph("Arduino Code", H2))
+            code = data["arduino_code"]
+            m = re.search(r"```(?:cpp|arduino|ino)?\n([\s\S]*?)```", code)
+            clean_code = (m.group(1) if m else code)
+            for line in clean_code[:3000].split("\n"):
+                if not line.strip(): continue
+                story.append(Paragraph(line.replace(" ","&nbsp;").replace("<","&lt;").replace(">","&gt;") or "&nbsp;", C))
+        except: pass
+
     story += [HRFlowable(width="100%",thickness=1,color=colors.HexColor("#ccc")),Spacer(1,3*mm),
               Paragraph("Generated by Circuit Copilot v4 · Powered by Groq LLaMA 3.3 70B · github.com/smemon819/circuit-copilot", F)]
     doc.build(story)
