@@ -341,6 +341,12 @@ def generate_pdf(data: dict) -> bytes:
     W  = PS("W",  fontSize=10, leading=14, textColor=colors.HexColor("#cc6600"), leftIndent=10)
     C  = PS("C",  fontSize=8,  leading=11, fontName="Courier")
     F  = PS("F",  fontSize=8,  textColor=colors.HexColor("#999"), alignment=TA_CENTER)
+    ERR= PS("ERR",fontSize=8,  textColor=colors.red, leftIndent=10)
+    
+    def sanitize(txt):
+        if not isinstance(txt, str): txt = str(txt)
+        return txt.replace("Ω","Ohm").replace("μ","u").replace("©","(c)").replace("™","(tm)")
+    
     story = []
     now = datetime.datetime.now().strftime("%B %d, %Y %H:%M")
     story += [Paragraph("Circuit Copilot", T),
@@ -357,10 +363,11 @@ def generate_pdf(data: dict) -> bytes:
             story.append(Paragraph("Circuit Schematic", H2))
             story.append(RLImage(io.BytesIO(base64.b64decode(data["schematic_image"])), width=160*mm, height=90*mm))
             story.append(Spacer(1, 4*mm))
-        except: pass
+        except Exception as e:
+            story.append(Paragraph(f"[Technical Error Rendering Schematic]", ERR))
     
     if data.get("schematic_description"):
-        story += [Paragraph(data["schematic_description"], B), Spacer(1, 6*mm)]
+        story += [Paragraph(sanitize(data["schematic_description"]), B), Spacer(1, 6*mm)]
     
     # BOM Section
     if data.get("bom"):
@@ -373,13 +380,13 @@ def generate_pdf(data: dict) -> bytes:
                 except: uc = 0.0
                 try: tc = float(it.get('total_cost',0))
                 except: tc = 0.0
-                rows.append([it.get("ref",""),it.get("description",""),it.get("value",""),
+                rows.append([sanitize(it.get("ref","")), sanitize(it.get("description","")), sanitize(it.get("value","")),
                              str(it.get("quantity",1)),f"${uc:.2f}",
-                             f"${tc:.2f}",it.get("supplier","")])
+                             f"${tc:.2f}",sanitize(it.get("supplier",""))])
             try: total_val = float(bom.get('total_cost_usd', 0))
             except: total_val = 0.0
             rows.append(["","","","","TOTAL",f"${total_val:.2f}",""])
-            t = Table(rows, colWidths=[15*mm,40*mm,22*mm,10*mm,18*mm,18*mm,32*mm]) # Narrower
+            t = Table(rows, colWidths=[15*mm,40*mm,22*mm,10*mm,18*mm,18*mm,32*mm]) 
             t.setStyle(TableStyle([
                 ("BACKGROUND",(0,0),(-1,0),colors.HexColor("#003366")),("TEXTCOLOR",(0,0),(-1,0),colors.white),
                 ("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),("FONTSIZE",(0,0),(-1,-1),8),
@@ -388,18 +395,19 @@ def generate_pdf(data: dict) -> bytes:
                 ("GRID",(0,0),(-1,-1),0.4,colors.HexColor("#ccc")),("PADDING",(0,0),(-1,-1),5),
             ]))
             story += [t, Spacer(1, 6*mm)]
-        except: pass
+        except Exception as e:
+            story.append(Paragraph(f"[Technical Error Rendering BOM Table]", ERR))
 
     # Simulation Section
     if data.get("simulation"):
         try:
             sim = data["simulation"]
             story.append(Paragraph("Simulation Results", H2))
-            story += [Paragraph(sim.get("summary",""), B), Spacer(1,4*mm)]
+            story += [Paragraph(sanitize(sim.get("summary","")), B), Spacer(1,4*mm)]
             if sim.get("nodes"):
                 nr = [["Node","Voltage","Description"]]
-                for n in sim["nodes"]: nr.append([n.get("name",""),f"{n.get('voltage',0)} {n.get('unit','V')}",n.get("description","")])
-                nt = Table(nr, colWidths=[35*mm,30*mm,95*mm]) # Slightly narrower
+                for n in sim["nodes"]: nr.append([sanitize(n.get("name","")),f"{n.get('voltage',0)} {sanitize(n.get('unit','V'))}",sanitize(n.get("description",""))])
+                nt = Table(nr, colWidths=[35*mm,30*mm,95*mm]) 
                 nt.setStyle(TableStyle([
                     ("BACKGROUND",(0,0),(-1,0),colors.HexColor("#005588")),("TEXTCOLOR",(0,0),(-1,0),colors.white),
                     ("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),("FONTSIZE",(0,0),(-1,-1),9),
@@ -407,8 +415,9 @@ def generate_pdf(data: dict) -> bytes:
                     ("GRID",(0,0),(-1,-1),0.5,colors.HexColor("#ccc")),("PADDING",(0,0),(-1,-1),5),
                 ]))
                 story += [nt, Spacer(1,4*mm)]
-            for w in sim.get("warnings",[]): story.append(Paragraph(f"Warning: {w}", W))
-        except: pass
+            for w in sim.get("warnings",[]): story.append(Paragraph(f"Warning: {sanitize(w)}", W))
+        except Exception as e:
+            story.append(Paragraph(f"[Technical Error Rendering Simulation]", ERR))
 
     # Arduino Section
     if data.get("arduino_code"):
@@ -419,8 +428,9 @@ def generate_pdf(data: dict) -> bytes:
             clean_code = (m.group(1) if m else code)
             for line in clean_code[:3000].split("\n"):
                 if not line.strip(): continue
-                story.append(Paragraph(line.replace(" ","&nbsp;").replace("<","&lt;").replace(">","&gt;") or "&nbsp;", C))
-        except: pass
+                story.append(Paragraph(sanitize(line).replace(" ","&nbsp;").replace("<","&lt;").replace(">","&gt;") or "&nbsp;", C))
+        except Exception as e:
+            story.append(Paragraph(f"[Technical Error Rendering Arduino Code]", ERR))
 
     story += [HRFlowable(width="100%",thickness=1,color=colors.HexColor("#ccc")),Spacer(1,3*mm),
               Paragraph("Generated by Circuit Copilot v4 · Powered by Groq LLaMA 3.3 70B · github.com/smemon819/circuit-copilot", F)]
