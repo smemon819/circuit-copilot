@@ -444,7 +444,7 @@ async def generate_schematic(request: Request):
     schema = json.loads(m.group())
     return JSONResponse({
         "schema": schema,
-        "image": await asyncio.to_thread(render_schematic, schema),
+        "image": render_schematic(schema),
         "description": schema.get("description",""),
         "title": schema.get("title",""),
         "difficulty": schema.get("difficulty",""),
@@ -642,7 +642,7 @@ async def export_kicad(request: Request):
 @app.post("/api/export-pdf")
 async def export_pdf(request: Request):
     data = await request.json()
-    pdf_bytes = await asyncio.to_thread(generate_pdf, data)
+    pdf_bytes = generate_pdf(data)
     fname = data.get("project_name","circuit_report").replace(" ","_")+".pdf"
     return StreamingResponse(io.BytesIO(pdf_bytes), media_type="application/pdf",
                              headers={"Content-Disposition":f"attachment; filename={fname}"})
