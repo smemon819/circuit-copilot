@@ -562,45 +562,63 @@ async def components_stream(request: Request):
 @limiter.limit("10/minute")
 async def debug_circuit(request: Request):
     body = await request.json()
-    result = await llm(DEBUG_PROMPT, body.get("history",[])+[{"role":"user","content":body.get("prompt","")}], 1200)
+    prompt = body.get("prompt","")
+    schema = body.get("schema")
+    full_prompt = (f"Circuit Schema: {json.dumps(schema)}\n\n" if schema else "") + prompt
+    result = await llm(DEBUG_PROMPT, body.get("history",[])+[{"role":"user","content":full_prompt}], 1200)
     return JSONResponse({"result": result})
 
 @app.post("/api/debug/stream")
 @limiter.limit("10/minute")
 async def debug_stream(request: Request):
     body = await request.json()
+    prompt = body.get("prompt","")
+    schema = body.get("schema")
+    full_prompt = (f"Circuit Schema: {json.dumps(schema)}\n\n" if schema else "") + prompt
     return StreamingResponse(
-        llm_stream(DEBUG_PROMPT, body.get("history",[])+[{"role":"user","content":body.get("prompt","")}], 1200),
+        llm_stream(DEBUG_PROMPT, body.get("history",[])+[{"role":"user","content":full_prompt}], 1200),
         media_type="text/event-stream", headers={"Cache-Control":"no-cache","X-Accel-Buffering":"no"})
 
 @app.post("/api/arduino")
 @limiter.limit("10/minute")
 async def generate_arduino(request: Request):
     body = await request.json()
-    result = await llm(ARDUINO_PROMPT, body.get("history",[])+[{"role":"user","content":body.get("prompt","")}], 2500)
+    prompt = body.get("prompt","")
+    schema = body.get("schema")
+    full_prompt = (f"Circuit Schema: {json.dumps(schema)}\n\n" if schema else "") + prompt
+    result = await llm(ARDUINO_PROMPT, body.get("history",[])+[{"role":"user","content":full_prompt}], 2500)
     return JSONResponse({"result": result})
 
 @app.post("/api/arduino/stream")
 @limiter.limit("10/minute")
 async def arduino_stream(request: Request):
     body = await request.json()
+    prompt = body.get("prompt","")
+    schema = body.get("schema")
+    full_prompt = (f"Circuit Schema: {json.dumps(schema)}\n\n" if schema else "") + prompt
     return StreamingResponse(
-        llm_stream(ARDUINO_PROMPT, body.get("history",[])+[{"role":"user","content":body.get("prompt","")}], 2500),
+        llm_stream(ARDUINO_PROMPT, body.get("history",[])+[{"role":"user","content":full_prompt}], 2500),
         media_type="text/event-stream", headers={"Cache-Control":"no-cache","X-Accel-Buffering":"no"})
 
 @app.post("/api/learn")
 @limiter.limit("10/minute")
 async def learn(request: Request):
     body = await request.json()
-    result = await llm(LEARN_PROMPT, body.get("history",[])+[{"role":"user","content":body.get("prompt","")}], 1500)
+    prompt = body.get("prompt","")
+    schema = body.get("schema")
+    full_prompt = (f"Circuit Schema: {json.dumps(schema)}\n\n" if schema else "") + prompt
+    result = await llm(LEARN_PROMPT, body.get("history",[])+[{"role":"user","content":full_prompt}], 1500)
     return JSONResponse({"result": result})
 
 @app.post("/api/learn/stream")
 @limiter.limit("10/minute")
 async def learn_stream(request: Request):
     body = await request.json()
+    prompt = body.get("prompt","")
+    schema = body.get("schema")
+    full_prompt = (f"Circuit Schema: {json.dumps(schema)}\n\n" if schema else "") + prompt
     return StreamingResponse(
-        llm_stream(LEARN_PROMPT, body.get("history", []) + [{"role": "user", "content": body.get("prompt", "")}], 1500),
+        llm_stream(LEARN_PROMPT, body.get("history", []) + [{"role": "user", "content": full_prompt}], 1500),
         media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 @app.post("/api/breadboard")
@@ -615,7 +633,10 @@ async def generate_breadboard(request: Request):
 @app.post("/api/simulate")
 async def simulate_circuit(request: Request):
     body = await request.json()
-    raw = await llm(SIMULATION_PROMPT, body.get("history",[])+[{"role":"user","content":body.get("prompt","")}], 1500)
+    prompt = body.get("prompt","")
+    schema = body.get("schema")
+    full_prompt = (f"Circuit Schema: {json.dumps(schema)}\n\n" if schema else "") + prompt
+    raw = await llm(SIMULATION_PROMPT, body.get("history",[])+[{"role":"user","content":full_prompt}], 1500)
     m = re.search(r"\{.*\}", raw, re.DOTALL)
     if not m: return JSONResponse({"error":"Could not parse simulation JSON"}, status_code=500)
     return JSONResponse({"simulation": json.loads(m.group())})
@@ -624,7 +645,10 @@ async def simulate_circuit(request: Request):
 @limiter.limit("10/minute")
 async def generate_bom(request: Request):
     body = await request.json()
-    raw = await llm(BOM_PROMPT, body.get("history",[])+[{"role":"user","content":body.get("prompt","")}], 1500)
+    prompt = body.get("prompt","")
+    schema = body.get("schema")
+    full_prompt = (f"Circuit Schema: {json.dumps(schema)}\n\n" if schema else "") + prompt
+    raw = await llm(BOM_PROMPT, body.get("history",[])+[{"role":"user","content":full_prompt}], 1500)
     m = re.search(r"\{.*\}", raw, re.DOTALL)
     if not m: return JSONResponse({"error":"Could not parse BOM JSON"}, status_code=500)
     return JSONResponse({"bom": json.loads(m.group())})
