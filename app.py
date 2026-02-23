@@ -20,7 +20,6 @@ from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from groq import AsyncGroq
-
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -36,11 +35,34 @@ app = FastAPI(title="Circuit Copilot v4")
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _custom_rate_limit_handler)
-client = AsyncGroq(
-    api_key=os.environ.get("GROQ_API_KEY", ""),
-    max_retries=0,
-    timeout=30.0
-)
+import random
+
+_groq_keys = [
+    os.environ.get("GROQ_API_KEY", ""),
+    os.environ.get("GROQ_API_KEY_2", ""),
+    os.environ.get("GROQ_API_KEY_3", ""),
+    os.environ.get("GROQ_API_KEY_4", ""),
+    os.environ.get("GROQ_API_KEY_5", ""),
+]
+_valid_keys = [k for k in _groq_keys if k.strip()]
+
+groq_clients = [
+    AsyncGroq(api_key=k, max_retries=0, timeout=30.0) 
+    for k in _valid_keys
+]
+
+def get_groq_client():
+    if not groq_clients:
+        # Fallback to empty client so error handling catches it
+        return AsyncGroq(api_key="empty", max_retries=0, timeout=30.0)
+    return random.choice(groq_clients)
+
+@app.get("/api/status")
+async def get_system_status():
+    return JSONResponse({
+        "status": "online",
+        "keys_in_pool": len(groq_clients)
+    })
 GROQ_MODEL        = "llama-3.3-70b-versatile"
 GROQ_VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
 GROQ_AGENT_MODEL  = "compound-beta"   # Agentic model with built-in web search
@@ -382,14 +404,14 @@ def generate_pdf(data: dict) -> bytes:
 
 # ── LLM Helpers ────────────────────────────────────────────────────────────────
 async def llm(system: str, messages: list, max_tokens: int = 1024) -> str:
-    r = await client.chat.completions.create(
+    r = await get_groq_client().chat.completions.create(
         model=GROQ_MODEL, max_tokens=max_tokens,
         messages=[{"role":"system","content":system}] + messages)
     return r.choices[0].message.content
 
 async def llm_stream(system: str, messages: list, max_tokens: int = 1024):
     """Async generator yielding SSE chunks."""
-    stream = await client.chat.completions.create(
+    stream = await get_groq_client().chat.completions.create(
         model=GROQ_MODEL, max_tokens=max_tokens, stream=True,
         messages=[{"role":"system","content":system}] + messages)
     async for chunk in stream:
@@ -401,7 +423,7 @@ async def llm_stream(system: str, messages: list, max_tokens: int = 1024):
 async def llm_compound(system: str, messages: list, max_tokens: int = 1500) -> str:
     """Call compound-beta with web_search tool for live data (prices, stock)."""
     try:
-        r = await client.chat.completions.create(
+        r = await get_groq_client().chat.completions.create(
             model=GROQ_AGENT_MODEL, max_tokens=max_tokens,
             messages=[{"role":"system","content":system}] + messages)
         return r.choices[0].message.content
@@ -412,7 +434,7 @@ async def llm_compound(system: str, messages: list, max_tokens: int = 1500) -> s
 async def llm_compound_stream(system: str, messages: list, max_tokens: int = 1500):
     """Streaming variant of compound-beta with graceful fallback."""
     try:
-        stream = await client.chat.completions.create(
+        stream = await get_groq_client().chat.completions.create(
             model=GROQ_AGENT_MODEL, max_tokens=max_tokens, stream=True,
             messages=[{"role":"system","content":system}] + messages)
         async for chunk in stream:
@@ -463,7 +485,7 @@ async def image_to_circuit(request: Request):
     if not image_b64:
         return JSONResponse({"error":"No image provided"}, status_code=400)
     try:
-        resp = await client.chat.completions.create(
+        resp = await get_groq_client().chat.completions.create(
             model=GROQ_VISION_MODEL, max_tokens=1600,
             messages=[{"role":"user","content":[
                 {"type":"image_url","image_url":{"url":f"data:{image_type};base64,{image_b64}"}},
@@ -474,7 +496,7 @@ async def image_to_circuit(request: Request):
         if not m: return JSONResponse({"error":"Could not parse vision response","raw":raw}, status_code=500)
         schema = json.loads(m.group())
         return JSONResponse({
-            "schema": schema, "image": await asyncio.to_thread(render_schematic, schema),
+            "schema": schema, "image": render_schematic(schema),
             "description": schema.get("description",""),
             "title": schema.get("title","Identified Circuit"),
             "difficulty": schema.get("difficulty",""),
